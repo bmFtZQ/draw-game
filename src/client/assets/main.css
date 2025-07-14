@@ -1,35 +1,111 @@
-@import './base.css';
+@layer primeui, custom;
 
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+:root {
+  --player-guessed-text-color: light-dark(
+    hsl(130 65% 35%),
+    hsl(130 65% 60%)
+  );
+
+  --player-guessed-background-tint: light-dark(
+    hsl(130 75% 50% / 0.35),
+    hsl(130 75% 50% / 0.35)
+  );
+
+  --player-current-background-tint: light-dark(
+    hsl(40 75% 50% / 0.35),
+    hsl(40 75% 50% / 0.35)
+  );
+
+  --player-me-text-color: currentColor;
+  --player-me-background-tint: light-dark(
+    rgb(0 0 0 / 0.15),
+    rgb(255 255 255 / 0.25)
+  );
+
+  --chat-player-background-me: light-dark(
+    hsl(220 100% 60%),
+    hsl(220 100% 65%)
+  );
+  --chat-player-color-me: white;
+
+  --chat-player-background-guessed: transparent;
+  --chat-player-color-guessed: var(--player-guessed-text-color);
+  --chat-player-content-guessed: light-dark(
+    hsl(130 45% 40%),
+    hsl(130 45% 60%)
+  );
+
+  --chat-player-joined: var(--player-guessed-text-color);
+  --chat-player-left: light-dark(
+    hsl(5 65% 50%),
+    hsl(5 80% 65%)
+  );
+
+  --chat-almost: light-dark(
+    hsl(45 100% 40%),
+    hsl(45 85% 65%)
+  );
+
+  --chat-event: light-dark(
+    hsl(220 100% 60%),
+    hsl(220 100% 65%)
+  );
+
+  --chat-turn-end: var(--chat-player-color-guessed);
+  --chat-game-end: var(--chat-almost);
+  --chat-kick: var(--chat-almost);
+  --chat-host-change: var(--chat-almost);
+
+  --backdrop-blur: blur(20px);
+
+  --app-max-width: 120rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
   font-weight: normal;
 }
 
-a,
-.green {
-  text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
-  transition: 0.4s;
-  padding: 3px;
+:root {
+  display: grid;
+  place-items: stretch;
+  height: 100vh;
 }
 
-@media (hover: hover) {
-  a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  color: var(--p-text-color);
+  background: var(--p-background);
+  line-height: 1.6;
+  font-family:
+    Inter,
+    sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  margin: 0;
+  justify-self: stretch;
+  height: 100%;
+
+  @media (width < 40rem) {
+    height: auto;
   }
 }
 
-@media (min-width: 1024px) {
-  body {
-    display: flex;
-    place-items: center;
-  }
+.page {
+  padding: 0 2rem 2rem;
+}
 
-  #app {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 0 2rem;
-  }
+.backdrop-blur {
+  backdrop-filter: var(--backdrop-blur);
 }

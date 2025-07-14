@@ -1,85 +1,142 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import { RouterLink, RouterView } from 'vue-router'
-import HelloWorld from './components/HelloWorld.vue'
+import Button from 'primevue/button';
+
+const blurStrength = ref(200);
+
+function beforePageEnter(el: Element) {
+  if (el instanceof HTMLElement) {
+    el.style.setProperty('--_in-transition-height', el.clientHeight + 'px');
+  }
+}
+
+function beforePageLeave(el: Element) {
+  if (el instanceof HTMLElement) {
+    el.style.setProperty('--_in-transition-height', el.clientHeight + 'px');
+  }
+}
 </script>
 
 <template>
   <header>
-    <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="125" height="125" />
+    <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="48" height="48" />
 
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-
-      <nav>
-        <RouterLink to="/">Home</RouterLink>
-        <RouterLink to="/about">About</RouterLink>
-      </nav>
-    </div>
+    <nav>
+      <RouterLink to="/">
+        <Button severity="secondary" variant="text">Home</Button>
+      </RouterLink>
+    </nav>
   </header>
 
-  <RouterView />
+  <div class="page-wrapper">
+    <RouterView v-slot="{ Component, route }">
+      <Transition :name="route.meta.transition" @enter="beforePageEnter" @leave="beforePageLeave">
+        <component :is="Component" :key="route.path" />
+      </Transition>
+    </RouterView>
+  </div>
+
+  <svg class="visually-hide">
+    <defs>
+      <filter id="blur-filter" x="-1" y="-1" height="3" width="3">
+        <feColorMatrix type="luminanceToAlpha" />
+        <feComponentTransfer result="result-luminance">
+          <feFuncA type="linear" slope="10" />
+        </feComponentTransfer>
+        <feComposite in="SourceGraphic" operator="in" in2="result-luminance" />
+        <feGaussianBlur :stdDeviation="blurStrength" result="result-blur" />
+        <feMerge>
+          <feMergeNode in="result-blur" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+
+      <filter id="paper-filter">
+        <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="5" seed="0" stitchTiles="noStitch"
+          result="feTurbulence-9c1f3d74" />
+        <feDiffuseLighting in="feTurbulence-9c1f3d74" surfaceScale="2" diffuseConstant="1" lighting-color="#ffffff"
+          result="feDiffuseLighting-0924e9c2">
+          <feDistantLight azimuth="45" elevation="75" />
+        </feDiffuseLighting>
+        <feBlend in="feDiffuseLighting-0924e9c2" in2="SourceGraphic" mode="multiply"></feBlend>
+        <feComposite in="feBlend-59ffcabd" in2="SourceAlpha" operator="in"></feComposite>
+      </filter>
+    </defs>
+  </svg>
+
 </template>
 
 <style scoped>
+.visually-hide {
+  visibility: hidden;
+  position: absolute;
+}
+
 header {
-  line-height: 1.5;
-  max-height: 100vh;
+  position: relative;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  margin: auto;
+  width: 100%;
+  max-width: var(--app-max-width);
 }
 
 .logo {
   display: block;
-  margin: 0 auto 2rem;
 }
 
-nav {
+.page-wrapper {
   width: 100%;
-  font-size: 12px;
-  text-align: center;
-  margin-top: 2rem;
+  margin-inline: auto;
+  max-width: var(--app-max-width);
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
 }
 
-nav a.router-link-exact-active {
-  color: var(--color-text);
+.page-forward-leave-active,
+.page-forward-enter-active,
+.page-backward-leave-active,
+.page-backward-enter-active {
+  --_duration: 500ms;
+  --_grow-factor: .25;
+
+  position: absolute;
+  inset: 0 0 auto;
+  height: max(var(--_in-transition-height), 100%);
+
+  transition-duration: var(--_duration);
+  transition-property: scale, opacity;
 }
 
-nav a.router-link-exact-active:hover {
-  background-color: transparent;
+.page-forward-enter-active,
+.page-backward-enter-active {
+  transition-timing-function:
+    cubic-bezier(.25, 1, .25, 1),
+    cubic-bezier(.5, 0, .75, .75)
 }
 
-nav a {
-  display: inline-block;
-  padding: 0 1rem;
-  border-left: 1px solid var(--color-border);
+.page-forward-leave-active,
+.page-backward-leave-active {
+  transition-timing-function:
+    cubic-bezier(.25, 1, .25, 1),
+    cubic-bezier(0, .5, .75, .75);
+
 }
 
-nav a:first-of-type {
-  border: 0;
+.page-forward-enter-from,
+.page-backward-leave-to {
+  scale: calc(1 / (var(--_grow-factor) + 1));
+  opacity: 0;
 }
 
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  nav {
-    text-align: left;
-    margin-left: -1rem;
-    font-size: 1rem;
-
-    padding: 1rem 0;
-    margin-top: 1rem;
-  }
+.page-forward-leave-to,
+.page-backward-enter-from {
+  scale: calc(var(--_grow-factor) + 1);
+  opacity: 0;
 }
 </style>

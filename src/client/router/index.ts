@@ -10,14 +10,32 @@ const router = createRouter({
       component: HomeView,
     },
     {
-      path: '/about',
-      name: 'about',
+      path: '/game/:room?',
+      name: 'game',
       // route level code-splitting
       // this generates a separate chunk (About.[hash].js) for this route
       // which is lazy-loaded when the route is visited.
-      component: () => import('../views/AboutView.vue'),
-    },
+      component: () => import('../views/GameView.vue'),
+      props: true,
+    }
   ],
 })
+
+router.afterEach((to, from) => {
+  const toDepth = split(to.path).length;
+  const fromDepth = split(from.path).length;
+  to.meta.transition = toDepth >= fromDepth ? 'page-forward' : 'page-backward';
+
+  function split(n: string) {
+    // filter used to remove last element if empty.
+    return n.split('/').filter((v, i, a) => i < a.length - 1 || v);
+  }
+})
+
+declare module 'vue-router' {
+  interface RouteMeta {
+    transition?: string;
+  }
+}
 
 export default router
