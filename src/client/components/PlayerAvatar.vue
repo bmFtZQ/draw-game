@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import type { DrawInstruction } from '../../shared/draw-v1';
-import DrawingCanvas from './DrawingCanvas.vue';
 import PlayerAvatarBg from './PlayerAvatarBg.vue';
+import Canvas from './Canvas.vue';
 
 const props = defineProps<{
   fill?: number,
@@ -18,6 +18,6 @@ const width = computed(() => props.width ?? 48);
 
 <template>
   <PlayerAvatarBg :height="height" :width="width" :fill="fill" :stroke="stroke">
-    <DrawingCanvas :canDraw="false" :height="64" :width="64" :drawing="drawing" :transparent="true" />
+    <Canvas :height="64" :width="64" :drawing="drawing" :transparent="true"></Canvas>
   </PlayerAvatarBg>
 </template>

@@ -13,6 +13,9 @@ type AlignContent = JustifyContent | 'baseline' | 'first baseline'
 type AlignItems = AlignContent | 'safe center' | 'unsafe center'
   | 'anchor-center' | 'self-start' | 'self-end';
 
+type AutoFlow = 'initial' | 'row'  | 'column' | 'dense' | 'row dense'
+  | 'column dense';
+
 const props = withDefaults(defineProps<{
   columns?: string,
   rows?: string,
@@ -21,6 +24,7 @@ const props = withDefaults(defineProps<{
   alignContent?: AlignContent,
   justifyItems?: JustifyItems,
   justifyContent?: JustifyContent,
+  autoFlow?: AutoFlow
   gap?: string,
 }>(), {
   columns: '1fr',
@@ -30,7 +34,8 @@ const props = withDefaults(defineProps<{
   alignContent: 'normal',
   justifyItems: 'normal',
   justifyContent: 'normal',
-  gap: '0'
+  autoFlow: 'initial',
+  gap: '0',
 });
 
 const areas = computed(() =>
@@ -56,6 +61,7 @@ const areas = computed(() =>
   align-content: v-bind(alignContent);
   justify-items: v-bind(justifyItems);
   justify-content: v-bind(justifyContent);
+  grid-auto-flow: v-bind(autoFlow);
   gap: v-bind(gap);
 }
 </style>

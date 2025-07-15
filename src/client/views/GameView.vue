@@ -2,7 +2,6 @@
 import PlayerInfo from '@/components/PlayerInfo.vue';
 import ChatMessageComponent from '@/components/ChatMessage.vue';
 import type { ChatItem } from '@/components/ChatMessage.vue';
-import DrawingCanvas from '@/components/DrawingCanvas.vue';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { type GameState, type DrawInstruction, type DrawMessage, type LoginRequest, type LoginResponse, type Message, type Player, type SendChatMessage, type StartGameMessage, type WordChosenMessage, MessageType, ErrorCode, defaultSettings } from '../../shared/draw-v1';
 import MessageContainer from '@/components/MessageContainer.vue';
@@ -11,6 +10,8 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue';
 import { InputText, Button, Dialog, FloatLabel, InputNumber } from 'primevue';
 import MaterialIcon from '@/components/MaterialIcon.vue';
 import Grid from '@/components/containers/Grid.vue';
+import DrawCanvas from '@/components/DrawCanvas.vue';
+import DrawCanvasControls from '@/components/DrawCanvasControls.vue';
 
 const props = defineProps<{
   room: string
@@ -163,7 +164,6 @@ websocket.onmessage = e => {
       break;
 
     case MessageType.CHAT: {
-      console.log('a')
       const player = findPlayer(msg.player_id)!;
       addChatMessage({
         kind: 'chat',
@@ -230,7 +230,7 @@ websocket.onmessage = e => {
       break;
 
     case MessageType.DRAW:
-      canvas.value?.drawImage(msg.instructions);
+      canvas.value?.importImage(msg.instructions);
       break;
 
     case MessageType.REVEAL_HINT:
@@ -257,7 +257,9 @@ function applyState(msg: LoginResponse) {
   round.value = msg.round;
   wordHint.value = msg.word_hint;
   state.value = msg.state;
-  canvas.value?.drawImage(msg.draw_instructions);
+  canvas.value?.importImage(msg.draw_instructions);
+
+  canvas.value
 }
 
 const messageScreen = ref<string>('loading');
@@ -353,7 +355,7 @@ function chooseWord(index: number) {
   sendMessage(msg);
 }
 
-const canvas = ref<InstanceType<typeof DrawingCanvas>>();
+const canvas = ref<InstanceType<typeof DrawCanvas>>();
 
 function onDraw(inst: DrawInstruction) {
   if (websocket.readyState !== websocket.OPEN) return;
@@ -392,8 +394,6 @@ const gameSettings = ref(structuredClone(defaultSettings))
 
 const canvasWidth = ref('');
 
-
-
 let canvasToolbox: HTMLElement | undefined;
 
 function resize({ width, height }: { width: number, height: number }) {
@@ -404,11 +404,17 @@ function resize({ width, height }: { width: number, height: number }) {
   canvasWidth.value = `${w}px`;
 }
 
-watch(() => canvas.value?.canDraw, () => {
-  const elm = document.querySelector('#app > .page-wrapper');
-  if (elm) {
-    resize(elm.getBoundingClientRect());
-  }
+// watch(() => canvas.value?.canDraw, () => {
+//   const elm = document.querySelector('#app > .page-wrapper');
+//   if (elm) {
+//     resize(elm.getBoundingClientRect());
+//   }
+// });
+
+const drawCanvasModel = ref({
+  tool: 'brush' as 'brush' | 'erase',
+  lineWidth: 6,
+  color: 1
 });
 
 </script>
@@ -446,11 +452,13 @@ watch(() => canvas.value?.canDraw, () => {
     </div>
 
     <div class="game-area">
-      <DrawingCanvas ref="canvas" @draw="onDraw" :width="640" :height="480"
-        :canDraw="current === me && state === 'in-turn'">
+      <!-- <DrawCanvas ref="canvas" @draw="onDraw" :width="640" :height="480" :scale="2"
+        :canDraw="current === me && state === 'in-turn'" :tools="drawCanvasModel"> -->
+      <DrawCanvas ref="canvas" @draw="onDraw" :width="640" :height="480" :scale="2" :canDraw="true"
+        :tools="drawCanvasModel">
 
-        <template #canvas>
-          <MessageContainer :selected="messageScreen">
+        <template #after-canvas>
+          <MessageContainer :selected="''">
             <template #waiting-for-host>
               <div class="title">
                 <span v-if="roomOwner === me">
@@ -510,9 +518,9 @@ watch(() => canvas.value?.canDraw, () => {
               {{ currentPlayer?.name }} is choosing a word…
             </template>
           </MessageContainer>
+          <DrawCanvasControls v-model="drawCanvasModel" @clear="canvas?.clear" />
         </template>
-
-      </DrawingCanvas>
+      </DrawCanvas>
     </div>
 
     <div class="chat-area">
@@ -595,7 +603,7 @@ main {
       "player chat"
       "player owner";
     grid-template-columns: 4fr 2fr;
-    grid-template-rows: auto 1fr 5rem auto;
+    grid-template-rows: auto auto 1fr auto;
   }
 
   @media (width < 40rem) {

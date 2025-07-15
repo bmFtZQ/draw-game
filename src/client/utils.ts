@@ -1,23 +1,34 @@
-export function getColor(col: number): string {
-  return [
-    '#fff',
-    '#000',
-    '#f00',
-    '#ff0',
-    '#0f0',
-    '#0ff',
-    '#00f',
-    '#f0f',
-    '#aaa',
-    '#444',
-    '#800',
-    '#f80',
-    '#080',
-    '#088',
-    '#008',
-    '#808',
-  ][col];
-}
+export const colors = [
+  '#FFFFFF', '#000000',
+  '#C1C1C1', '#505050',
+  '#EF130B', '#740B07',
+  '#FF7100', '#C23800',
+  '#FFE414', '#E8A206',
+  '#01CC17', '#014619',
+  '#02FC91', '#01785D',
+  '#00B2FF', '#01569E',
+  '#2329D3', '#0D0E65',
+  '#A223BA', '#550F69',
+  '#DF69A7', '#873554',
+  '#FFAC8E', '#CC774D',
+  '#A0522D', '#63300E',
+];
+
+export const colorNames = [
+  'white', 'black',
+  'light grey', 'dark grey',
+  'red', 'dark red',
+  'orange', 'dark orange',
+  'yellow', 'dark yellow',
+  'green', 'dark green',
+  'mint', 'dark mint',
+  'blue', 'dark blue',
+  'indigo', 'dark indigo',
+  'purple', 'dark purple',
+  'pink', 'dark pink',
+  'beige', 'light brown',
+  'brown', 'dark brown'
+];
 
 export function clamp(num: number, min: number, max: number): number {
   return Math.min(Math.max(min, num), max);
@@ -25,12 +36,12 @@ export function clamp(num: number, min: number, max: number): number {
 
 export function localGet<T>(key: string, def: T): T;
 export function localGet<T>(key: string): T | undefined;
-  export function localGet<T>(key: string, _def?: T): T | undefined {
+export function localGet<T>(key: string, def?: T): T | undefined {
   const item = localStorage.getItem(key);
   if (item) {
     return JSON.parse(item);
   }
-  return _def;
+  return def;
 }
 
 export function localSet<T>(key: string, value: T) {

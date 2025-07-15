@@ -6,6 +6,7 @@ import router from './router'
 import PrimeVue from 'primevue/config';
 import Resizer from 'v-resize-observer';
 import preset from './PrimeVueTheme';
+import { Tooltip } from 'primevue';
 
 const app = createApp(App)
 
@@ -35,5 +36,7 @@ const resizeObserver = new ResizeObserver((entries) => {
     );
   });
 });
+
+app.directive('tooltip', Tooltip);
 
 resizeObserver.observe(document.documentElement);

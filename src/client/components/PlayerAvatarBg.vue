@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { getColor } from '@/utils';
+import { colors } from '@/utils';
 import { computed, ref } from 'vue';
 
 const props = defineProps<{
@@ -13,11 +13,11 @@ const height = computed(() => props.height ?? 48);
 const width = computed(() => props.width ?? 48);
 
 const fillVal = computed(() => {
-  return getColor(props.fill ?? 2);
+  return colors[props.fill ?? 2];
 });
 
 const strokeVal = computed(() => {
-  return getColor(props.stroke ?? 1);
+  return colors[props.stroke ?? 1];
 });
 
 function getSize(a: number | string): string {

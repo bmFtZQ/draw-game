@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import DrawingCanvas from '@/components/DrawingCanvas.vue';
+// import DrawingCanvas from '@/components/DrawingCanvas.vue';
 import router from '@/router';
 import { computed, onMounted, ref } from 'vue';
 import type { DrawInstruction } from '../../shared/draw-v1';
-import { getColor, localGet, localSet } from '@/utils';
+import { localGet, localSet } from '@/utils';
 import PlayerAvatarBg from '@/components/PlayerAvatarBg.vue';
 import MaterialIcon from '@/components/MaterialIcon.vue';
 
@@ -13,11 +13,11 @@ import Flex from '@/components/containers/Flex.vue';
 
 const roomId = ref('');
 
-const canvas = ref<InstanceType<typeof DrawingCanvas>>();
+// const canvas = ref<InstanceType<typeof DrawingCanvas>>();
 
 function joinRoom() {
 
-  avatar.value = canvas.value?.exportImage() ?? [];
+  // avatar.value = canvas.value?.exportImage() ?? [];
 
   localSet('name', name.value);
   localSet('avatar', avatar.value);
@@ -75,7 +75,7 @@ function mod(a: number, b: number): number {
 
           <div class="character-creator">
 
-            <DrawingCanvas ref="canvas" :height="64" :width="64" :scale="4" :transparent="true" :canDraw="true"
+            <!-- <DrawingCanvas ref="canvas" :height="64" :width="64" :scale="4" :transparent="true" :canDraw="true"
               :drawing="avatar">
               <template #canvas>
                 <Button class="color-button prev" @click="avatar_bg = mod(avatar_bg - 1, 16)">
@@ -90,7 +90,7 @@ function mod(a: number, b: number): number {
                 </Button>
                 <PlayerAvatarBg :fill="avatar_bg" height="100%" width="100%" />
               </template>
-            </DrawingCanvas>
+            </DrawingCanvas> -->
           </div>
         </div>
       </template>

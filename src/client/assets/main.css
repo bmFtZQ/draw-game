@@ -91,11 +91,12 @@ body {
 }
 
 #app {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   margin: 0;
   justify-self: stretch;
   height: 100%;
+  place-items: stretch;
 
   @media (width < 40rem) {
     height: auto;

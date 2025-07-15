@@ -74,6 +74,7 @@ function beforePageLeave(el: Element) {
 }
 
 header {
+  flex: 0;
   position: relative;
   z-index: 100;
   display: flex;
@@ -90,6 +91,7 @@ header {
 }
 
 .page-wrapper {
+  flex: 1;
   width: 100%;
   margin-inline: auto;
   max-width: var(--app-max-width);
