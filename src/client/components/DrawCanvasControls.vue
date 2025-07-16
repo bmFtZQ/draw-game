@@ -11,9 +11,11 @@ import PopoverButton from './PopoverButton.vue';
 type Tools = 'brush' | 'erase';
 
 const props = withDefaults(defineProps<{
-  pointerdown?: boolean
+  pointerdown?: boolean,
+  lineWidthOptions?: number[]
 }>(), {
-  pointerdown: false
+  pointerdown: false,
+  lineWidthOptions: () => [3, 6, 9, 15, 30, 60]
 });
 
 const model = defineModel<{
@@ -26,18 +28,10 @@ const emit = defineEmits<{
   clear: []
 }>();
 
-// const inCanvasMode = ref(false);
-
-// onMounted(() => {
-
-// });
-
 const icons: Record<Tools, { icon: string, label: string }> = {
   brush: { icon: 'brush', label: 'Brush' },
   erase: { icon: 'ink_eraser', label: 'Erase' }
 }
-
-const lineWidthOptions = [3, 6, 9, 15, 30, 60];
 
 const colorOptions = range(26);
 
@@ -60,7 +54,7 @@ watch(() => model.value.color, () => {
 <template>
   <Card ref="root" class="toolbox backdrop-blur">
     <template #content>
-      <Flex gap="1rem">
+      <Flex gap="1rem" wrap="wrap" justify="center">
         <!-- color -->
         <PopoverButton v-model="model.color" :options="colorOptions" label="Colours">
           <template #button-content="slotProps">
@@ -166,7 +160,7 @@ watch(() => model.value.color, () => {
   position: absolute;
   inset-inline: 1rem;
   margin: auto;
-  width: min-content;
+  width: max-content;
   max-width: calc(100% - 2rem);
   bottom: 0rem;
   transition: translate 750ms cubic-bezier(.42, 1.53, .41, 1.01);

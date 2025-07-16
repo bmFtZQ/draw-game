@@ -10,14 +10,24 @@ import MaterialIcon from '@/components/MaterialIcon.vue';
 import Button from 'primevue/button';
 import { Card, Divider, FloatLabel, InputText } from 'primevue';
 import Flex from '@/components/containers/Flex.vue';
+import DrawCanvas from '@/components/DrawCanvas.vue';
+import Grid from '@/components/containers/Grid.vue';
+import DrawCanvasControls from '@/components/DrawCanvasControls.vue';
 
 const roomId = ref('');
 
-// const canvas = ref<InstanceType<typeof DrawingCanvas>>();
+const canvas = ref<InstanceType<typeof DrawCanvas>>();
+
+onMounted(() => {
+  if (canvas.value) {
+    const image = localGet<DrawInstruction[]>('avatar', []);
+    canvas.value.importImage(image);
+  }
+})
 
 function joinRoom() {
 
-  // avatar.value = canvas.value?.exportImage() ?? [];
+  avatar.value = canvas.value?.exportImage() ?? [];
 
   localSet('name', name.value);
   localSet('avatar', avatar.value);
@@ -35,6 +45,12 @@ const name = ref('');
 const avatar = ref<DrawInstruction[]>([]);
 const avatar_bg = ref<number>(0);
 
+const drawCanvasModel = ref({
+  tool: 'brush' as 'brush' | 'erase',
+  lineWidth: 3,
+  color: 1
+});
+
 onMounted(() => {
   name.value = localGet<string>('name', '');
   avatar.value = localGet<DrawInstruction[]>('avatar', []);
@@ -50,10 +66,15 @@ function mod(a: number, b: number): number {
   <main class="page">
 
     <Card>
-      <template #title>asdf</template>
       <template #content>
-        <div class="split-container">
-          <Flex class="login" gap="1rem" direction="column">
+        <Flex class="split-container" gap="1rem">
+          <Flex class="login" gap="1rem" direction="column" justify="center">
+            <div class="text">
+              <h1>Welcome</h1>
+              <p>Enter your name below and draw your character.</p>
+              <p>You can optionally enter a room ID to join, or leave it blank for
+                a random public room.</p>
+            </div>
             <FloatLabel variant="in">
               <InputText id="room-id-input" v-model="roomId" fluid />
               <label for="room-id-input">Room ID</label>
@@ -73,80 +94,62 @@ function mod(a: number, b: number): number {
 
           <Divider layout="vertical" />
 
-          <div class="character-creator">
+          <Grid class="character-creator" gap="0.5rem" columns="auto 1fr auto" alignItems="center"
+            :areas="['prev canvas next', '. toolbox .']">
+            <Button class="color-button prev" @click="avatar_bg = mod(avatar_bg - 1, 26)">
+              <template #icon>
+                <MaterialIcon icon="arrow_back" alt="Previous colour" />
+              </template>
+            </Button>
 
-            <!-- <DrawingCanvas ref="canvas" :height="64" :width="64" :scale="4" :transparent="true" :canDraw="true"
-              :drawing="avatar">
-              <template #canvas>
-                <Button class="color-button prev" @click="avatar_bg = mod(avatar_bg - 1, 16)">
-                  <template #icon>
-                    <MaterialIcon icon="arrow_back" alt="Previous colour" />
-                  </template>
-                </Button>
-                <Button class="color-button next" @click="avatar_bg = mod(avatar_bg + 1, 16)">
-                  <template #icon>
-                    <MaterialIcon icon="arrow_forward" alt="Next colour" />
-                  </template>
-                </Button>
+            <DrawCanvas ref="canvas" :height="64" :width="64" :scale="4" :transparent="true" :canDraw="true"
+              :tools="drawCanvasModel">
+              <template #before-canvas>
                 <PlayerAvatarBg :fill="avatar_bg" height="100%" width="100%" />
               </template>
-            </DrawingCanvas> -->
-          </div>
-        </div>
+            </DrawCanvas>
+
+            <Button class="color-button next" @click="avatar_bg = mod(avatar_bg + 1, 26)">
+              <template #icon>
+                <MaterialIcon icon="arrow_forward" alt="Next colour" />
+              </template>
+            </Button>
+
+            <DrawCanvasControls v-model="drawCanvasModel" @clear="canvas?.clear" :lineWidthOptions="[2, 3, 6, 9]">
+            </DrawCanvasControls>
+          </Grid>
+        </Flex>
       </template>
     </Card>
-
-
-
   </main>
 </template>
 
 <style scoped>
+@media (width < 50rem) {
+  .split-container {
+    flex-direction: column;
+  }
+}
+
 .page {
   display: grid;
   place-items: center;
 }
 
-.split-container {
-  display: flex;
-  gap: 1rem;
+.text {
+  max-width: 40ch;
 }
 
-.drawing-canvas {
-  width: 22rem;
-  margin-inline: calc(var(--p-button-icon-only-width) + 1rem);
-  isolation: isolate;
-
-  .color-button {
-    position: absolute;
-    width: var(--p-button-icon-only-width);
-    height: auto;
-    top: 50%;
-    translate: var(--_offset-x, 0) -50%;
-
-    &.prev {
-      --_offset-x: calc(-100% - 1rem);
-      left: 0;
-    }
-
-    &.next {
-      --_offset-x: calc(100% + 1rem);
-      right: 0;
-    }
-  }
+.player-avatar {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
 }
 
-:deep(.canvas-wrapper) {
-  display: grid;
-
-  > * {
-    grid-area: 1/1/1/1;
-    width: 100%;
-    height: 100%;
-  }
-
-  > :deep(.player-avatar) {
-    z-index: -1;
-  }
+.toolbox {
+  position: static;
+  grid-area: toolbox;
+  width: auto;
+  max-width: none;
 }
 </style>

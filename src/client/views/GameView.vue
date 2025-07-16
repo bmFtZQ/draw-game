@@ -68,18 +68,18 @@ const wordHint = ref('');
 const endReason = ref('');
 const state = ref<GameState>();
 
-const leaderboard = computed(() => {
+const leaderboard = computed<[number, Player][]>(() => {
   let prevScore = -1;
   let position = 0;
   return [...players.value]
     .sort((a, b) => (a.score - b.score) || (a.id - b.id))
-    .map(p => ({
-      ...p,
-      position: p.score > prevScore
+    .map(p => [
+      p.score > prevScore
         ? (prevScore = p.score, ++position)
-        : position
-    }));
-})
+        : position,
+      p
+    ]);
+});
 
 function resetPlayers(alsoScore?: boolean) {
   players.value.forEach(p => {
@@ -221,16 +221,26 @@ websocket.onmessage = e => {
       break;
     }
 
-    case MessageType.TURN_END:
+    case MessageType.TURN_END: {
       endReason.value = msg.reason;
       wordHint.value = msg.word;
       applyScores(msg.scores);
       state.value = 'end-turn';
       applyTimer(msg.timer.expires, msg.timer.start);
+      addChatMessage({
+        kind: 'turn-end',
+        word: msg.word
+      });
       break;
+    }
 
     case MessageType.GAME_END:
       state.value = 'end-game';
+      addChatMessage({
+        kind: 'game-end',
+        winner: leaderboard.value[0][1],
+        score: leaderboard.value[0][0]
+      })
       break;
 
     case MessageType.DRAW:
@@ -495,7 +505,7 @@ const drawCanvasModel = ref({
               <template #final-leaderboard>
                 <div class="title">Final results for this game.</div>
                 <ol class="winner-list">
-                  <li v-for="player in leaderboard" :key="player.id" :value="player.position">
+                  <li v-for="[pos, player] in leaderboard" :key="player.id" :value="pos">
                     <span>{{ player.name }}</span>: <span>{{ player.score }} pts.</span>
                   </li>
                 </ol>
@@ -702,7 +712,7 @@ main {
   }
 
   :deep(canvas) {
-    filter: url(#blur-filter);
+    filter: url(#blur-filter-2);
   }
 
   :deep(.message-backdrop) {

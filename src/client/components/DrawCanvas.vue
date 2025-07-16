@@ -33,6 +33,10 @@ function importImage(img: DrawInstruction[]) {
   canvas.value?.drawImage(image.value);
 }
 
+function exportImage(): DrawInstruction[] {
+  return [...image.value];
+}
+
 function drawInstruction(instruction: DrawInstruction) {
   canvas.value?.drawInstruction(instruction);
 }
@@ -43,7 +47,7 @@ function clear() {
   canvas.value?.clear();
 }
 
-defineExpose({ importImage, clear, canvas });
+defineExpose({ importImage, exportImage, clear, canvas });
 
 let previous = { x: 0, y: 0, pressure: 0 };
 const mouseDown = ref(false);
@@ -168,7 +172,7 @@ function canvasResize({ width }: { width: number }) {
         <slot name="after-canvas"></slot>
       </template>
     </Canvas>
-    <div class="mouse-cursor" :data-in-canvas="pointerInCanvas || undefined"></div>
+    <!-- <div class="mouse-cursor" :data-in-canvas="pointerInCanvas || undefined"></div> -->
   </Grid>
 </template>
 
@@ -176,9 +180,9 @@ function canvasResize({ width }: { width: number }) {
 .draw-canvas {
   user-select: none;
 
-  &[data-in-canvas] .click-catcher {
+  /* &[data-in-canvas] .click-catcher {
     cursor: none;
-  }
+  } */
 
   &:not(.transparent) :deep(canvas) {
     background: white;
@@ -191,7 +195,7 @@ function canvasResize({ width }: { width: number }) {
   inset: 0;
 }
 
-.mouse-cursor {
+/* .mouse-cursor {
   display: none;
   position: fixed;
   top: v-bind('mouseY + "px"');
@@ -213,5 +217,5 @@ function canvasResize({ width }: { width: number }) {
   .mouse-cursor {
     display: none;
   }
-}
+} */
 </style>

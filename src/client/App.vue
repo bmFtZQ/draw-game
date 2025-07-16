@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { RouterLink, RouterView } from 'vue-router'
 import Button from 'primevue/button';
 
-const blurStrength = ref(200);
+const blurStrength = ref(150);
 
 function beforePageEnter(el: Element) {
   if (el instanceof HTMLElement) {
@@ -39,6 +39,15 @@ function beforePageLeave(el: Element) {
 
   <svg class="visually-hide">
     <defs>
+
+      <filter id="blur-filter-2" x="-1" y="-1" height="3" width="3">
+        <feGaussianBlur :stdDeviation="blurStrength" />
+        <feMerge>
+          <feMergeNode />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+
       <filter id="blur-filter" x="-1" y="-1" height="3" width="3">
         <feColorMatrix type="luminanceToAlpha" />
         <feComponentTransfer result="result-luminance">
