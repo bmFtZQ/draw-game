@@ -1,18 +1,32 @@
-export type Message = LoginRequest
-  | ErrorMessage
-  | LoginResponse
+/**
+ * All messages that will be sent between clients and the server.
+ */
+export type Message = ClientMessage | ServerMessage;
+
+/**
+ * Messages that a client can send to the server.
+ */
+export type ClientMessage = LoginRequest
   | StartGameMessage
+  | StopMessage
+  | WordChosenMessage
+  | SendChatMessage
+  | DrawMessage;
+
+/**
+ * Messages that the server will send to a client.
+ */
+export type ServerMessage = ErrorMessage
+  | LoginResponse
   | PlayerJoinMessage
   | PlayerLeaveMessage
   | NewRoundMessage
   | ChooseWordMessage
-  | WordChosenMessage
   | TurnStartMessage
   | TurnEndMessage
   | GameEndMessage
   | StopMessage
   | RevealHintMessage
-  | SendChatMessage
   | ChatMessage
   | PlayerGuessedMessage
   | AlmostGuessMessage
@@ -77,13 +91,19 @@ export interface TimerUpdate {
   expires: number;
 }
 
+/**
+ * Sent to a client when an error occurs, typically in response to a bad
+ * request.
+ */
 export interface ErrorMessage {
   type: MessageType.ERROR;
   code: ErrorCode,
   detail?: any
 }
 
-// Initial request from client to server asking to join a room.
+/**
+ * Sent to server from client to join a room
+ */
 export interface LoginRequest {
   type: MessageType.LOGIN_REQUEST;
   room_id?: string;
@@ -117,11 +137,16 @@ export interface LoginResponse {
   draw_instructions: DrawInstruction[];
 }
 
+/**
+ * Broadcast to all clients when a new game is starting.
+ */
 export interface StartGameMessage {
   type: MessageType.START_GAME;
 }
 
-// Notify when a new player joins.
+/**
+ * Broadcast to all clients when a player joins the room.
+ */
 export interface PlayerJoinMessage {
   type: MessageType.PLAYER_JOIN;
   id: number;
@@ -130,21 +155,29 @@ export interface PlayerJoinMessage {
   avatar: DrawInstruction[];
 }
 
-// Notify when a player leaves.
+/**
+ * Broadcast to all clients when a player leaves the room.
+ */
 export interface PlayerLeaveMessage {
   type: MessageType.PLAYER_LEAVE;
   reason: 'left' | 'kick';
   id: number;
 }
 
-// Notify a new round starting.
+/**
+ * Broadcast to all clients when a new round has started.
+ */
 export interface NewRoundMessage {
   type: MessageType.NEW_ROUND;
   round: number;
   timer: TimerUpdate;
 }
 
-// Server sends request for current player to choose a word.
+/**
+ * Broadcast before a new turn begins, the current player will receive a list of
+ * possible words in {@link words} that they can choose using
+ * {@link WordChosenMessage}.
+ */
 export interface ChooseWordMessage {
   type: MessageType.CHOOSE_WORD;
   current_player_id: number;
@@ -152,13 +185,18 @@ export interface ChooseWordMessage {
   timer: TimerUpdate;
 }
 
-// Player sends their chosen word back and the round begins.
+/**
+ * Sent to the server to indicate that the current player had chosen their word.
+ */
 export interface WordChosenMessage {
   type: MessageType.WORD_CHOSEN;
   word_index: number;
 }
 
-// Round has started, current player can get full word as hint.
+/**
+ * Broadcast when a new turn begins, current player will receive a complete
+ * {@link word_hint}, while others will receive a hidden word with underscores.
+ */
 export interface TurnStartMessage {
   type: MessageType.TURN_START;
   current_player_id: number;
@@ -166,12 +204,18 @@ export interface TurnStartMessage {
   timer: TimerUpdate;
 }
 
+/**
+ * Broadcast to players other than the current when a hint for the current word
+ * has been revealed.
+ */
 export interface RevealHintMessage {
   type: MessageType.REVEAL_HINT;
   word_hint: string;
 }
 
-// Round has ended, display scores.
+/**
+ * The current turn had ended, and a summary of scores should be displayed.
+ */
 export interface TurnEndMessage {
   type: MessageType.TURN_END;
   reason: 'time-out' | 'guessed' | 'kick' | 'left';
@@ -183,6 +227,10 @@ export interface TurnEndMessage {
   timer: TimerUpdate;
 }
 
+/**
+ * Broadcast to all clients that the current game had completed and the
+ * leaderboard should be shown.
+ */
 export interface GameEndMessage {
   type: MessageType.GAME_END,
   scores: {
@@ -191,34 +239,51 @@ export interface GameEndMessage {
   }[];
 }
 
+/**
+ * Can be sent to server from host client to immediately stop the current game,
+ * message will then be forwarded to all clients.
+ */
 export interface StopMessage {
   type: MessageType.STOP
 }
 
-// Send a chat message/guess to server.
+/**
+ * Send a chat message or guess to the server.
+ */
 export interface SendChatMessage {
   type: MessageType.SEND_CHAT;
   content: string;
 }
 
-// Chat message from the server.
+/**
+ * Incoming chat message from the server, to be printed in message list.
+ */
 export interface ChatMessage {
   type: MessageType.CHAT;
   player_id: number;
   content: string;
 }
 
+/**
+ * Let a player know their guess was close to the actual word.
+ */
 export interface AlmostGuessMessage {
   type: MessageType.ALMOST;
   word: string;
 }
 
+/**
+ * Broadcast when a player guesses a word correctly.
+ */
 export interface PlayerGuessedMessage {
   type: MessageType.PLAYER_GUESSED;
   player_id: number;
   word?: string;
 }
 
+/**
+ * Broadcast when the host of the room changes, e.g. previous host left.
+ */
 export interface OwnerChangeMessage {
   type: MessageType.OWNER_CHANGE;
   player_id: number;
@@ -228,6 +293,7 @@ export enum DrawType {
   CLEAR,
   DRAW_LINE,
   ERASE_LINE,
+  QUADRATIC_CURVE
 }
 
 export interface DrawMessage {

@@ -1,5 +1,5 @@
 import { WebSocket } from 'ws';
-import { type ChatMessage, type GameSettings, type LoginResponse, type Message, type NewRoundMessage, type ChooseWordMessage, type OwnerChangeMessage, type Player, type PlayerJoinMessage, type PlayerLeaveMessage, type TurnEndMessage, type TurnStartMessage, type SendChatMessage, type WordChosenMessage, type GameState, type RevealHintMessage, type GameEndMessage, type DrawInstruction, ErrorCode, MessageType, DrawType, defaultSettings, PlayerGuessedMessage } from '../shared/draw-v1';
+import { type ChatMessage, type GameSettings, type LoginResponse, type NewRoundMessage, type ChooseWordMessage, type OwnerChangeMessage, type Player, type PlayerJoinMessage, type PlayerLeaveMessage, type TurnEndMessage, type TurnStartMessage, type SendChatMessage, type WordChosenMessage, type GameState, type RevealHintMessage, type GameEndMessage, type DrawInstruction, ErrorCode, MessageType, DrawType, defaultSettings, PlayerGuessedMessage, ClientMessage, ServerMessage } from '../shared/draw-v1';
 import EventEmitter from 'node:events';
 import { arrayCount, delay, round } from './utils';
 
@@ -7,12 +7,12 @@ type ServerPlayer = Player & { client: WebSocket };
 
 export class Room extends EventEmitter {
   id: string;
-  #gameState: GameState = 'none';
-  #currentId = 0;
+  settings = structuredClone(defaultSettings);
+  #nextNewPlayerId = 0;
   players: ServerPlayer[] = [];
+  #gameState: GameState = 'none';
   #currentPlayer: number = -1;
   #roomOwner: number = -1;
-  #settings = structuredClone(defaultSettings);
   #round = -1;
   #currentWord: string | null = null;
   #timerExpires: number = -1;
@@ -33,7 +33,7 @@ export class Room extends EventEmitter {
     },
     ws: WebSocket
   ) {
-    const id = this.#currentId++;
+    const id = this.#nextNewPlayerId++;
     const player = { id, name, score: 0, client: ws, has_guessed: false, avatar, avatar_bg };
     this.players.push(player)
 
@@ -58,7 +58,7 @@ export class Room extends EventEmitter {
         avatar_bg: p.avatar_bg
       })),
       room_id: this.id,
-      settings: this.#settings,
+      settings: this.settings,
       current_player: this.#currentPlayer,
       round: this.#round,
       timer: {
@@ -143,7 +143,7 @@ export class Room extends EventEmitter {
 
         this.#currentPlayer = -1;
 
-        for (this.#round = 1; this.#round <= this.#settings.rounds_per_game; this.#round++) {
+        for (this.#round = 1; this.#round <= this.settings.rounds_per_game; this.#round++) {
 
           const time = 2000;
           this.#timerStart = Date.now();
@@ -197,7 +197,7 @@ export class Room extends EventEmitter {
         this.#gameState = 'choosing-word';
         this.#currentWord = await this.promptChoseWord(words, signal);
         this.#timerStart = Date.now();
-        this.#timerExpires = this.#timerStart + this.#settings.timer * 1000;
+        this.#timerExpires = this.#timerStart + this.settings.timer * 1000;
         this.#wordHint = this.#currentWord.replace(/\w/g, '_');
 
         const roundStartMsg: TurnStartMessage = {
@@ -257,8 +257,8 @@ export class Room extends EventEmitter {
         .map(([p, s]) => ({ player_id: p.id, points: s }));
     };
 
-    const maxHints = Math.min(this.#settings.max_hints, Math.round(word.length / 2));
-    const hintRate = Math.max(this.#settings.timer / maxHints, 10);
+    const maxHints = Math.min(this.settings.max_hints, Math.round(word.length / 2));
+    const hintRate = Math.max(this.settings.timer / maxHints, 10);
 
     return await new Promise((resolve, reject) => {
       const removeListeners = () => {
@@ -287,7 +287,7 @@ export class Room extends EventEmitter {
             expires: -1
           }
         })
-      }, this.#settings.timer * 1000);
+      }, this.settings.timer * 1000);
 
       let hints = -1;
       const hintInterval = setInterval(() => {
@@ -302,7 +302,7 @@ export class Room extends EventEmitter {
             const char = Math.floor(Math.random() * chars.length);
             if (chars[char] !== '_') continue;
 
-            chars[char] = this.#currentWord[char];
+            chars[char] = this.#currentWord[char]!;
             this.#wordHint = chars.join('');
             const msg: RevealHintMessage = {
               type: MessageType.REVEAL_HINT,
@@ -385,7 +385,7 @@ export class Room extends EventEmitter {
   private calculateScore(isCurrent: boolean = false): number {
     const now = new Date();
     const diff = (this.#timerExpires.valueOf() - now.valueOf()) / 1000;
-    const progress = diff / this.#settings.timer;
+    const progress = diff / this.settings.timer;
 
     const currentOffset = (isCurrent ? 1 : 0);
     const left = arrayCount(this.players, p => !p.has_guessed) - currentOffset;
@@ -398,7 +398,7 @@ export class Room extends EventEmitter {
   private promptChoseWord(words: string[], signal: AbortSignal): Promise<string> {
 
     this.#timerStart = Date.now();
-    this.#timerExpires = this.#timerStart + this.#settings.choose_word_timer * 1000;
+    this.#timerExpires = this.#timerStart + this.settings.choose_word_timer * 1000;
     const msg: ChooseWordMessage = {
       type: MessageType.CHOOSE_WORD,
       current_player_id: this.#currentPlayer,
@@ -429,13 +429,13 @@ export class Room extends EventEmitter {
 
         const timeout = setTimeout(() => {
           removeListeners();
-          resolve(words[Math.floor(Math.random() * words.length)]);
-        }, this.#settings.choose_word_timer * 1000);
+          resolve(words[Math.floor(Math.random() * words.length)]!);
+        }, this.settings.choose_word_timer * 1000);
 
         const wordChosenHandler = (player: Player, msg: WordChosenMessage) => {
           removeListeners();
           if (msg.word_index < words.length) {
-            resolve(words[msg.word_index]);
+            resolve(words[msg.word_index]!);
           }
         };
 
@@ -443,7 +443,7 @@ export class Room extends EventEmitter {
 
         const currentPlayerLeftHandler = (player: Player) => {
           removeListeners();
-          resolve(words[Math.floor(Math.random() * words.length)]);
+          resolve(words[Math.floor(Math.random() * words.length)]!);
         };
 
         this.on('current-player-left', currentPlayerLeftHandler);
@@ -455,7 +455,7 @@ export class Room extends EventEmitter {
     });
   }
 
-  public handleMessage(ws: WebSocket, msg: Message) {
+  public handleMessage(ws: WebSocket, msg: ClientMessage) {
 
     switch (msg.type) {
       case MessageType.WORD_CHOSEN:
@@ -492,12 +492,16 @@ export class Room extends EventEmitter {
         this.stopGame();
         break;
 
+      case MessageType.LOGIN_REQUEST:
+        break;
+
       default:
         ws.send(JSON.stringify({
           type: MessageType.ERROR,
           code: ErrorCode.INVALID_MESSAGE,
-          detail: msg.type
+          detail: (msg as ClientMessage).type
         }));
+        const guard: never = msg;
         break;
     }
   }
@@ -577,7 +581,7 @@ export class Room extends EventEmitter {
     return diff < 3;
   }
 
-  private messageAllPlayers(msg: Message) {
+  private messageAllPlayers(msg: ServerMessage) {
     const json = JSON.stringify(msg);
     this.players
       .forEach(p => {
@@ -585,7 +589,7 @@ export class Room extends EventEmitter {
       });
   }
 
-  private messagePlayer(player: Player | number | WebSocket, msg: Message) {
+  private messagePlayer(player: Player | number | WebSocket, msg: ServerMessage) {
 
     let client: WebSocket | undefined;
 
@@ -602,7 +606,7 @@ export class Room extends EventEmitter {
     client?.send(JSON.stringify(msg));
   }
 
-  private messageOtherPlayers(player: number | Player, msg: Message) {
+  private messageOtherPlayers(player: number | Player, msg: ServerMessage) {
     const id = typeof player === 'object' ? player.id : player;
     const json = JSON.stringify(msg);
     this.players
@@ -610,7 +614,7 @@ export class Room extends EventEmitter {
       .forEach(p => p.client.send(json));
   }
 
-  private messageSpecifiedPlayers(players: number[] | Player[], msg: Message) {
+  private messageSpecifiedPlayers(players: number[] | Player[], msg: ServerMessage) {
     const ids = players.map(p => typeof p === 'object' ? p.id : p);
     const json = JSON.stringify(msg);
     this.players

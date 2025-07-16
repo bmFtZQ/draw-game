@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { DrawType, type DrawInstruction, type DrawLineInstruction, type EraseLineInstruction } from '../../shared/draw-v1';
-import { colors } from '@/utils';
+import { colors, unhandled } from '@/utils';
 
 const props = defineProps<{
   width: number,
@@ -41,6 +41,7 @@ function drawInstruction(instruction: DrawInstruction) {
     case DrawType.CLEAR: clear(); break;
     case DrawType.DRAW_LINE: line(instruction); break;
     case DrawType.ERASE_LINE: erase(instruction); break;
+    default: unhandled(instruction);
   }
 }
 

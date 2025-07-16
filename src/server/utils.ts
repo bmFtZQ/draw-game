@@ -22,3 +22,10 @@ export function round(n: number, amount: number): number {
 export function arrayCount<T>(arr: T[], predicate: (value: T, index: number, array: T[]) => boolean) {
   return arr.filter(predicate).length;
 }
+
+export function* mapIter<T, TOut>(iter: Iterable<T>, fn: (value: T, index: number) => TOut): Iterable<TOut> {
+  let index = 0;
+  for (const value of iter) {
+    yield fn(value, index);
+  }
+}

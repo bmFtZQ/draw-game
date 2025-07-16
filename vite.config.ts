@@ -20,6 +20,6 @@ export default defineConfig({
     allowedHosts: true,
     hmr: {
       port: 3001
-    }
+    },
   }
 })

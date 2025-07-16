@@ -1,3 +1,5 @@
+import type { EnumType } from "typescript";
+
 export const colors = [
   '#FFFFFF', '#000000',
   '#C1C1C1', '#505050',
@@ -47,4 +49,8 @@ export function localGet<T>(key: string, def?: T): T | undefined {
 export function localSet<T>(key: string, value: T) {
   const json = JSON.stringify(value);
   localStorage.setItem(key, json);
+}
+
+export function unhandled(value: never): never {
+  throw Error(`Unhandled switch value: ${JSON.stringify(value, undefined, 2)}`);
 }

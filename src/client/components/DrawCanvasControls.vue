@@ -4,13 +4,13 @@ import Grid from './containers/Grid.vue';
 import Flex from './containers/Flex.vue';
 import MaterialIcon from './MaterialIcon.vue';
 import type { MenuItem } from 'primevue/menuitem';
-import { onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { colorNames, colors } from '@/utils';
 import PopoverButton from './PopoverButton.vue';
 
 type Tools = 'brush' | 'erase';
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   pointerdown?: boolean
 }>(), {
   pointerdown: false
@@ -48,6 +48,13 @@ function onClearClick(e: MouseEvent) {
 function range(length: number): number[] {
   return Array.from({ length }).map((_, i) => i);
 }
+
+watch(() => model.value.color, () => {
+  if (model.value.tool === 'erase') {
+    // Switch back to brush if user changes colour while eraser is selected.
+    model.value.tool = 'brush';
+  }
+});
 </script>
 
 <template>
@@ -106,9 +113,9 @@ function range(length: number): number[] {
   bottom: 1rem;
   transition: translate 750ms cubic-bezier(.42, 1.53, .41, 1.01);
 
-  & {
-    /* translate: 0 6rem; */
-  }
+  /* & {
+    translate: 0 6rem;
+  } */
 }
 
 .line-width,

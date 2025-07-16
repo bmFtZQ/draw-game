@@ -3,9 +3,9 @@ import PlayerInfo from '@/components/PlayerInfo.vue';
 import ChatMessageComponent from '@/components/ChatMessage.vue';
 import type { ChatItem } from '@/components/ChatMessage.vue';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { type GameState, type DrawInstruction, type DrawMessage, type LoginRequest, type LoginResponse, type Message, type Player, type SendChatMessage, type StartGameMessage, type WordChosenMessage, MessageType, ErrorCode, defaultSettings } from '../../shared/draw-v1';
+import { type GameState, type DrawInstruction, type DrawMessage, type LoginRequest, type LoginResponse, type Player, type SendChatMessage, type StartGameMessage, type WordChosenMessage, MessageType, ErrorCode, defaultSettings, type ServerMessage, type ClientMessage } from '../../shared/draw-v1';
 import MessageContainer from '@/components/MessageContainer.vue';
-import { clamp, localGet } from '@/utils';
+import { clamp, localGet, unhandled } from '@/utils';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
 import { InputText, Button, Dialog, FloatLabel, InputNumber } from 'primevue';
 import MaterialIcon from '@/components/MaterialIcon.vue';
@@ -118,18 +118,21 @@ watch(state, () => {
       break;
 
     case 'none':
-    default:
+    case undefined:
       messageScreen.value = 'waiting-for-host';
       applyTimer(-1, -1);
       resetPlayers(true);
       current.value = -1;
       wordHint.value = 'Please wait...';
       break;
+
+    default:
+      unhandled(state.value);
   }
 });
 
 websocket.onmessage = e => {
-  const msg = JSON.parse(e.data.toString()) as Message;
+  const msg = JSON.parse(e.data.toString()) as ServerMessage;
   switch (msg.type) {
     case MessageType.LOGIN_RESPONSE:
       applyState(msg);
@@ -244,6 +247,9 @@ websocket.onmessage = e => {
     case MessageType.ERROR:
       console.error('An error occurred:', ErrorCode[msg.code], msg.detail);
       break;
+
+    default:
+      unhandled(msg);
   }
 };
 
@@ -297,7 +303,7 @@ function applyScores(newScores: { player_id: number, points: number }[]) {
   })
 }
 
-function sendMessage(msg: Message) {
+function sendMessage(msg: ClientMessage) {
   const json = JSON.stringify(msg);
   websocket.send(json);
 }
