@@ -1,13 +1,14 @@
 import { WebSocket } from 'ws';
 import { type ChatMessage, type GameSettings, type LoginResponse, type NewRoundMessage, type ChooseWordMessage, type OwnerChangeMessage, type Player, type PlayerJoinMessage, type PlayerLeaveMessage, type TurnEndMessage, type TurnStartMessage, type SendChatMessage, type WordChosenMessage, type GameState, type RevealHintMessage, type GameEndMessage, type DrawInstruction, ErrorCode, MessageType, DrawType, defaultSettings, PlayerGuessedMessage, ClientMessage, ServerMessage } from '../shared/draw-v1';
 import EventEmitter from 'node:events';
-import { arrayCount, delay, round } from './utils';
+import { arrayCount, delay, mapIter, round } from './utils';
 
 type ServerPlayer = Player & { client: WebSocket };
 
 export class Room extends EventEmitter {
   id: string;
   settings = structuredClone(defaultSettings);
+  wordList: string[];
   #nextNewPlayerId = 0;
   players: ServerPlayer[] = [];
   #gameState: GameState = 'none';
@@ -22,9 +23,10 @@ export class Room extends EventEmitter {
 
   #currentImage: DrawInstruction[] = [];
 
-  constructor(id: string) {
+  constructor(id: string, wordList: string[]) {
     super();
     this.id = id;
+    this.wordList = wordList;
   }
 
   public newClient(
@@ -192,7 +194,7 @@ export class Room extends EventEmitter {
           reject(signal.reason)
         });
 
-        const words = this.generateWords();
+        const words = this.generateWords(this.settings.word_choices);
         this.#gameState = 'choosing-word';
         this.#currentWord = await this.promptChoseWord(words, signal);
         this.#timerStart = Date.now();
@@ -243,8 +245,16 @@ export class Room extends EventEmitter {
     });
   }
 
-  private generateWords(): string[] {
-    return ['hello', 'world', 'javascript'];
+  private generateWords(count: number): string[] {
+    const { min, floor, random } = Math;
+    const limit = min(count, this.wordList.length);
+
+    const set = new Set<number>();
+    while (set.size < limit) {
+      set.add(floor(random() * this.wordList.length));
+    }
+
+    return [...mapIter(set.values(), i => this.wordList[i]!)];
   }
 
   private async runTurn(word: string, signal: AbortSignal): Promise<TurnEndMessage> {

@@ -65,6 +65,7 @@ const currentPlayer = computed(() => {
 });
 
 const wordHint = ref('');
+const wordHintHeader = ref('');
 const endReason = ref('');
 const state = ref<GameState>();
 
@@ -92,6 +93,8 @@ function resetPlayers(alsoScore?: boolean) {
 watch(state, () => {
   switch (state.value) {
     case 'new-round':
+      wordHint.value = '...';
+      wordHintHeader.value = 'Waiting';
       messageScreen.value = 'round';
       break;
 
@@ -107,6 +110,8 @@ watch(state, () => {
       break;
 
     case 'end-game':
+      wordHint.value = '...';
+      wordHintHeader.value = 'End of game';
       messageScreen.value = 'final-leaderboard';
       current.value = -1;
       applyTimer(-1, -1);
@@ -123,7 +128,8 @@ watch(state, () => {
       applyTimer(-1, -1);
       resetPlayers(true);
       current.value = -1;
-      wordHint.value = 'Please wait...';
+      wordHintHeader.value = 'Waiting';
+      wordHint.value = '...';
       break;
 
     default:
@@ -204,12 +210,15 @@ websocket.onmessage = e => {
       applyTimer(msg.timer.expires, msg.timer.start);
       wordOptions.value = msg.words ?? [];
       state.value = 'choosing-word';
+      wordHintHeader.value = me.value === msg.current_player_id ? 'Choose a word' : 'Waiting';
+      wordHint.value = '...';
       break;
 
     case MessageType.TURN_START: {
       canvas.value?.clear();
       current.value = msg.current_player_id;
       wordHint.value = msg.word_hint;
+      wordHintHeader.value = me.value === msg.current_player_id ? 'Draw this:' : 'Guess this:';
       applyTimer(msg.timer.expires, msg.timer.start);
       state.value = 'in-turn';
       const player = findPlayer(msg.current_player_id)!;
@@ -224,6 +233,7 @@ websocket.onmessage = e => {
     case MessageType.TURN_END: {
       endReason.value = msg.reason;
       wordHint.value = msg.word;
+      wordHintHeader.value = 'Results for';
       applyScores(msg.scores);
       state.value = 'end-turn';
       applyTimer(msg.timer.expires, msg.timer.start);
@@ -465,8 +475,13 @@ function onSaveSettingsClick() {
 <template>
   <main ref="root" class="page">
     <div class="info-bar">
-      <div class="timer">{{ timeLeft }}s</div>
-      <div class="word">{{ wordHint }}</div>
+      <div class="timer">
+        <span v-if="timeLeft">{{ timeLeft }}s</span>
+      </div>
+      <div class="word">
+        <div class="top">{{ wordHintHeader }}</div>
+        <div class="bottom">{{ wordHint }}</div>
+      </div>
       <div class="timer-progress"></div>
     </div>
     <div class="player-list">
@@ -598,19 +613,25 @@ function onSaveSettingsClick() {
       <Grid gap="1rem">
         <FloatLabel variant="in">
           <label for="rounds-per-game-input">Rounds per game</label>
-          <InputNumber v-model="gameSettings.rounds_per_game" inputId="rounds-per-game-input" showButtons />
+          <InputNumber v-model="gameSettings.rounds_per_game" inputId="rounds-per-game-input" showButtons :min="1" />
         </FloatLabel>
         <FloatLabel variant="in">
           <label for="choose-word-timer-input">"Choose word" timer</label>
-          <InputNumber v-model="gameSettings.choose_word_timer" inputId="choose-word-timer-input" showButtons />
+          <InputNumber v-model="gameSettings.choose_word_timer" inputId="choose-word-timer-input" showButtons
+            :min="1" />
         </FloatLabel>
         <FloatLabel variant="in">
           <label for="timer-input">Turn duration</label>
-          <InputNumber v-model="gameSettings.timer" inputId="timer-input" showButtons />
+          <InputNumber v-model="gameSettings.timer" inputId="timer-input" showButtons :min="1" />
         </FloatLabel>
         <FloatLabel variant="in">
           <label for="max-hints-input">Maximum hints per turn</label>
-          <InputNumber v-model="gameSettings.max_hints" inputId="max-hints-input" showButtons />
+          <InputNumber v-model="gameSettings.max_hints" inputId="max-hints-input" showButtons :min="0" />
+        </FloatLabel>
+        <FloatLabel variant="in">
+          <label for="word-choices-input">Number of word choices</label>
+          <InputNumber v-model="gameSettings.word_choices" inputId="word-choices-input" showButtons :min="1"
+            :max="10" />
         </FloatLabel>
         <Button label="Save" @click="onSaveSettingsClick">
           <template #icon>
@@ -793,13 +814,26 @@ main {
     grid-area: timer;
     justify-self: start;
     padding: 0.5rem;
+    font-feature-settings: "tnum";
+    font-size: 1.5rem;
   }
 
   .word {
+    text-align: center;
     grid-area: word;
-    font-family: monospace;
-    letter-spacing: 0.5ch;
     padding: 0.5rem;
+
+    .top {
+      font-size: 1rem;
+      font-weight: bold;
+    }
+
+    .bottom {
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.4ch;
+      font-size: 1.2rem;
+      font-variant-ligatures: none;
+    }
   }
 
   .timer-progress {

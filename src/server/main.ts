@@ -1,15 +1,28 @@
 import express from 'express';
 import ViteExpress from 'vite-express';
 import expressWs from 'express-ws';
+import { parseArgs } from 'util';
+import { readFile } from 'fs/promises';
 import { type ClientMessage, MessageType } from '../shared/draw-v1';
 import { Room } from './Room';
 import { mapIter } from './utils';
-import { parseArgs } from 'util';
+
+const wordList: string[] = [];
 
 const app = express();
 const ws = expressWs(app);
 const privateRooms = new Map<string, Room>();
 const publicRooms = new Map<string, Room>();
+
+try {
+  importWordList(await readFile('./word_list.txt', { encoding: 'utf-8' }));
+}
+catch (e) {
+  if (typeof e === 'object' && e !== null && 'code' in e && e?.code === 'ENOENT') {
+    console.warn('No wordlist found, using sample words...');
+    wordList.push('hello', 'world', 'draw', 'something');
+  }
+}
 
 const { values: { print } } = parseArgs({
   options: {
@@ -56,6 +69,11 @@ ViteExpress.listen(app, port, () => {
   console.log(`Server is listening at port ${port}`);
 });
 
+function importWordList(words: string) {
+  wordList.length = 0;
+  wordList.push(...words.split(','));
+}
+
 function getOrCreateRoom(id?: string): [Room, Map<string, Room>] {
   const roomsMap = id ? privateRooms : publicRooms;
 
@@ -74,7 +92,7 @@ function getOrCreateRoom(id?: string): [Room, Map<string, Room>] {
   const existing = roomsMap.get(id);
   if (existing) return [existing, roomsMap];
 
-  const room = new Room(id);
+  const room = new Room(id, wordList);
   roomsMap.set(id, room);
   return [room, roomsMap];
 }

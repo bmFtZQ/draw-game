@@ -20,7 +20,8 @@ function beforePageLeave(el: Element) {
 
 <template>
   <header>
-    <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="48" height="48" />
+    <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="24" height="24" />
+    <div class="title">Draw</div>
 
     <nav>
       <RouterLink to="/">
@@ -39,7 +40,6 @@ function beforePageLeave(el: Element) {
 
   <svg class="visually-hide">
     <defs>
-
       <filter id="blur-filter-2" x="-1" y="-1" height="3" width="3">
         <feGaussianBlur :stdDeviation="blurStrength" />
         <feMerge>
@@ -89,10 +89,16 @@ header {
   display: flex;
   align-items: center;
   gap: 1rem;
-  padding: 1rem;
+  padding: 0.75rem 2rem;
   margin: auto;
   width: 100%;
   max-width: var(--app-max-width);
+}
+
+.title {
+  font-weight: bold;
+  font-size: 1.25rem;
+  margin-top: -1px;
 }
 
 .logo {

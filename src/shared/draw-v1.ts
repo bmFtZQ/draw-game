@@ -51,13 +51,15 @@ export interface GameSettings {
   choose_word_timer: number;
   max_hints: number;
   rounds_per_game: number;
+  word_choices: number;
 }
 
 export const defaultSettings: GameSettings = {
   timer: 80,
   choose_word_timer: 10,
   max_hints: 5,
-  rounds_per_game: 3
+  rounds_per_game: 3,
+  word_choices: 3
 };
 
 export enum MessageType {
