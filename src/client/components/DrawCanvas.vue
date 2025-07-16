@@ -181,7 +181,7 @@ const cursorUrl = computed(() =>
         <slot name="before-canvas"></slot>
       </template>
       <template #after-canvas>
-        <div class="click-catcher" @pointerdown.prevent.self="onPointerDown" v-resize="canvasResize"></div>
+        <div class="click-catcher" @pointerdown.prevent.self="onPointerDown" v-resize="canvasResize" :data-can-draw="canDraw || undefined"></div>
         <slot name="after-canvas"></slot>
       </template>
     </Canvas>
@@ -192,7 +192,7 @@ const cursorUrl = computed(() =>
 .draw-canvas {
   user-select: none;
 
-  .click-catcher {
+  .click-catcher[data-can-draw] {
     /* Use the dynamically generated svg */
     cursor: v-bind(cursorUrl) v-bind(cursorHotspot) v-bind(cursorHotspot), default;
   }

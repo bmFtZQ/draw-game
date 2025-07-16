@@ -11,9 +11,11 @@ import PopoverButton from './PopoverButton.vue';
 type Tools = 'brush' | 'erase';
 
 const props = withDefaults(defineProps<{
+  canDraw?: boolean,
   pointerdown?: boolean,
   lineWidthOptions?: number[]
 }>(), {
+  canDraw: true,
   pointerdown: false,
   lineWidthOptions: () => [3, 6, 9, 30, 60]
 });
@@ -52,7 +54,7 @@ watch(() => model.value.color, () => {
 </script>
 
 <template>
-  <Card ref="root" class="toolbox backdrop-blur">
+  <Card ref="root" class="toolbox backdrop-blur" :data-can-draw="canDraw || undefined">
     <template #content>
       <Flex gap="1rem" wrap="wrap" justify="center">
         <!-- color -->
@@ -98,6 +100,10 @@ watch(() => model.value.color, () => {
 </template>
 
 <style scoped>
+.toolbox:not([data-can-draw]) {
+  display: none;
+}
+
 .toolbox {
   --p-card-background: light-dark(rgb(240 240 240 / 0.65), rgb(72 72 72 / 0.65));
   --base-bg: light-dark(rgb(255 255 255 / 0.4), rgb(255 255 255 / 0.1));

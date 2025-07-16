@@ -20,6 +20,8 @@ export class Room extends EventEmitter {
   #wordHint: string | null = null;
   #abortController: AbortController | undefined;
 
+  #currentImage: DrawInstruction[] = [];
+
   constructor(id: string) {
     super();
     this.id = id;
@@ -43,15 +45,7 @@ export class Room extends EventEmitter {
 
     const loginMsg: LoginResponse = {
       type: MessageType.LOGIN_RESPONSE,
-      draw_instructions: [
-        { type: DrawType.MOVE, x: 50, y: 410 },
-        { type: DrawType.DRAW_LINE, color: 2, x: 590, y: 50, width: 200 },
-        { type: DrawType.MOVE, x: 50, y: 50 },
-        { type: DrawType.DRAW_LINE, color: 5, x: 590, y: 410, width: 200 },
-        { type: DrawType.MOVE, x: 50, y: 50 },
-        { type: DrawType.QUADRATIC_CURVE, color: 9, cx: 250, cy: 50, x: 250, y: 250, width: 15 },
-
-      ],
+      draw_instructions: this.#currentImage,
       me: id,
       owner: this.#roomOwner,
       players: [...this.players.values()].map(p => ({
@@ -220,7 +214,8 @@ export class Room extends EventEmitter {
         roundStartMsg.word_hint = this.#currentWord;
         this.messagePlayer(this.#currentPlayer, roundStartMsg);
 
-        const scoreMsg = await this.runRound(this.#currentWord, signal);
+        this.#currentImage.length = 0;
+        const scoreMsg = await this.runTurn(this.#currentWord, signal);
 
         this.#wordHint = this.#currentWord;
         this.#gameState = 'end-turn';
@@ -252,7 +247,7 @@ export class Room extends EventEmitter {
     return ['hello', 'world', 'javascript'];
   }
 
-  private async runRound(word: string, signal: AbortSignal): Promise<TurnEndMessage> {
+  private async runTurn(word: string, signal: AbortSignal): Promise<TurnEndMessage> {
 
     this.players.forEach(p => p.has_guessed = false);
     const scores = new Map<Player, number>();
@@ -489,6 +484,14 @@ export class Room extends EventEmitter {
 
       case MessageType.DRAW:
         if (ws === this.getClient(this.#currentPlayer) && this.#gameState === 'in-turn') {
+          for (const instruction of msg.instructions) {
+            if (instruction.type === DrawType.CLEAR) {
+              this.#currentImage.length = 0;
+            } else {
+              this.#currentImage.push(instruction);
+            }
+          }
+
           this.messageOtherPlayers(this.#currentPlayer, msg);
         }
         break;

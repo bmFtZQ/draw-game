@@ -3,7 +3,7 @@ import PlayerInfo from '@/components/PlayerInfo.vue';
 import ChatMessageComponent from '@/components/ChatMessage.vue';
 import type { ChatItem } from '@/components/ChatMessage.vue';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { type GameState, type DrawInstruction, type DrawMessage, type LoginRequest, type LoginResponse, type Player, type SendChatMessage, type StartGameMessage, type WordChosenMessage, MessageType, ErrorCode, defaultSettings, type ServerMessage, type ClientMessage } from '../../shared/draw-v1';
+import { type GameState, type DrawInstruction, type DrawMessage, type LoginRequest, type LoginResponse, type Player, type StartGameMessage, type WordChosenMessage, MessageType, ErrorCode, defaultSettings, type ServerMessage, type ClientMessage } from '../../shared/draw-v1';
 import MessageContainer from '@/components/MessageContainer.vue';
 import { clamp, localGet, unhandled } from '@/utils';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
@@ -30,7 +30,7 @@ onMounted(() => {
 const websocket = new WebSocket(location.origin.replace('http', 'ws'), 'draw-v1');
 const canSendChat = ref(false);
 
-websocket.onopen = (e) => {
+websocket.onopen = async (e) => {
   const name = localGet<string>('name', 'no name');
   const avatar = JSON.parse(localStorage.getItem('avatar') ?? '[]');
   const avatar_bg = JSON.parse(localStorage.getItem('avatar_bg') ?? '2');
@@ -114,7 +114,6 @@ watch(state, () => {
       break;
 
     case 'in-turn':
-      canvas.value?.clear();
       messageScreen.value = '';
       break;
 
@@ -208,6 +207,7 @@ websocket.onmessage = e => {
       break;
 
     case MessageType.TURN_START: {
+      canvas.value?.clear();
       current.value = msg.current_player_id;
       wordHint.value = msg.word_hint;
       applyTimer(msg.timer.expires, msg.timer.start);
@@ -275,8 +275,6 @@ function applyState(msg: LoginResponse) {
   wordHint.value = msg.word_hint;
   state.value = msg.state;
   canvas.value?.importImage(msg.draw_instructions);
-
-  canvas.value
 }
 
 const messageScreen = ref<string>('loading');
@@ -482,16 +480,15 @@ const drawCanvasModel = ref({
 
     <div class="game-area" v-resize:0.immediate="resize">
       <div class="canvas-wrapper">
-        <DrawCanvas ref="canvas" @draw="onDraw" :width="640" :height="480" :scale="2" :canDraw="true"
-          :tools="drawCanvasModel">
+        <DrawCanvas ref="canvas" @draw="onDraw" :width="640" :height="480" :scale="2"
+          :canDraw="state === 'in-turn' && current === me" :tools="drawCanvasModel">
           <template #after-canvas>
-            <MessageContainer :selected="''">
+            <MessageContainer :selected="messageScreen">
               <template #waiting-for-host>
                 <div class="title">
                   <span v-if="roomOwner === me">
                     <span v-if="players.length > 1">
                       Click 'Start game' to begin...
-                      <Button label="Start" severity="transparent"></Button>
                     </span>
                     <span v-else>Waiting for more players…</span>
                   </span>
@@ -545,7 +542,8 @@ const drawCanvasModel = ref({
                 {{ currentPlayer?.name }} is choosing a word…
               </template>
             </MessageContainer>
-            <DrawCanvasControls v-model="drawCanvasModel" @clear="canvas?.clear" v-resize:0.immediate="resizeToolbox" />
+            <DrawCanvasControls :canDraw="state === 'in-turn' && current === me" :tools="drawCanvasModel"
+              v-model="drawCanvasModel" @clear="canvas?.clear" v-resize:0.immediate="resizeToolbox" />
           </template>
         </DrawCanvas>
       </div>
