@@ -47,7 +47,7 @@ const avatar_bg = ref<number>(0);
 
 const drawCanvasModel = ref({
   tool: 'brush' as 'brush' | 'erase',
-  lineWidth: 3,
+  lineWidth: 4,
   color: 1
 });
 
@@ -75,14 +75,15 @@ function mod(a: number, b: number): number {
               <p>You can optionally enter a room ID to join, or leave it blank for
                 a random public room.</p>
             </div>
-            <FloatLabel variant="in">
-              <InputText id="room-id-input" v-model="roomId" fluid />
-              <label for="room-id-input">Room ID</label>
-            </FloatLabel>
 
             <FloatLabel variant="in">
               <InputText id="name-input" v-model="name" fluid />
               <label for="name-input">Name</label>
+            </FloatLabel>
+
+            <FloatLabel variant="in">
+              <InputText id="room-id-input" v-model="roomId" fluid />
+              <label for="room-id-input">Room ID</label>
             </FloatLabel>
 
             <Button @click="joinRoom" :disabled="!name" label="Join">
@@ -102,7 +103,7 @@ function mod(a: number, b: number): number {
               </template>
             </Button>
 
-            <DrawCanvas ref="canvas" :height="64" :width="64" :scale="4" :transparent="true" :canDraw="true"
+            <DrawCanvas ref="canvas" :height="64" :width="64" :scale="8" :transparent="true" :canDraw="true"
               :tools="drawCanvasModel">
               <template #before-canvas>
                 <PlayerAvatarBg :fill="avatar_bg" height="100%" width="100%" />
@@ -115,7 +116,7 @@ function mod(a: number, b: number): number {
               </template>
             </Button>
 
-            <DrawCanvasControls v-model="drawCanvasModel" @clear="canvas?.clear" :lineWidthOptions="[2, 3, 6, 9]">
+            <DrawCanvasControls v-model="drawCanvasModel" @clear="canvas?.clear" :lineWidthOptions="[2, 4, 6, 8]">
             </DrawCanvasControls>
           </Grid>
         </Flex>

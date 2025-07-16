@@ -105,18 +105,7 @@ function onPointerUp(e: PointerEvent) {
   }
 }
 
-const pointerInCanvas = ref(false);
-const mouseX = ref(0);
-const mouseY = ref(0);
-const canvasWidth = ref(0);
-const cursorSize = computed(() =>
-  (lineWidth.value * props.scale * (canvasWidth.value / props.width) )/ 2
-);
-const cursorVisible = computed(() => pointerInCanvas.value && props.canDraw);
-
 function onPointerMove(e: PointerEvent) {
-  mouseX.value = e.clientX;
-  mouseY.value = e.clientY;
 
   if (!mouseDown.value) return;
   const { x, y } = translateMouse(e.clientX, e.clientY);
@@ -154,25 +143,48 @@ onUnmounted(() => {
   window.removeEventListener('pointerup', onPointerUp);
 });
 
+const canvasWidth = ref(0);
+
 function canvasResize({ width }: { width: number }) {
   canvasWidth.value = width;
 }
 
+const cursorSize = computed(() =>
+  (lineWidth.value * props.scale * (canvasWidth.value / props.width)) / props.scale
+);
+
+const cursorHotspot = computed(() => cursorSize.value / 2);
+
+const cursorUrl = computed(() =>
+  'url("data:image/svg+xml,' + encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg"
+      width="${cursorSize.value}"
+      height="${cursorSize.value}">
+      <style>
+        circle {
+          --size: calc(50% - var(--offset, 0px));
+          r: var(--size);
+          fill: none;
+        }
+      </style>
+      <circle cx="50%" cy="50%" style="--offset: 0.5px" stroke-width="1.01" stroke="white" />
+      <circle cx="50%" cy="50%" style="--offset: 1.5px" stroke-width="1.01" stroke="black" />
+    </svg>
+  `) + '")'
+);
 </script>
 
 <template>
-  <Grid :class="{ 'draw-canvas': true, transparent }" :data-in-canvas="pointerInCanvas || undefined">
+  <Grid :class="{ 'draw-canvas': true, transparent }">
     <Canvas ref="canvas" :width="width" :height="height" :scale="scale">
       <template #before-canvas>
         <slot name="before-canvas"></slot>
       </template>
       <template #after-canvas>
-        <div class="click-catcher" @pointerdown.prevent.self="onPointerDown" @pointerenter="pointerInCanvas = true"
-          @pointerleave="pointerInCanvas = false" v-resize="canvasResize"></div>
+        <div class="click-catcher" @pointerdown.prevent.self="onPointerDown" v-resize="canvasResize"></div>
         <slot name="after-canvas"></slot>
       </template>
     </Canvas>
-    <!-- <div class="mouse-cursor" :data-in-canvas="pointerInCanvas || undefined"></div> -->
   </Grid>
 </template>
 
@@ -180,9 +192,10 @@ function canvasResize({ width }: { width: number }) {
 .draw-canvas {
   user-select: none;
 
-  /* &[data-in-canvas] .click-catcher {
-    cursor: none;
-  } */
+  .click-catcher {
+    /* Use the dynamically generated svg */
+    cursor: v-bind(cursorUrl) v-bind(cursorHotspot) v-bind(cursorHotspot), default;
+  }
 
   &:not(.transparent) :deep(canvas) {
     background: white;
@@ -194,28 +207,4 @@ function canvasResize({ width }: { width: number }) {
   position: absolute;
   inset: 0;
 }
-
-/* .mouse-cursor {
-  display: none;
-  position: fixed;
-  top: v-bind('mouseY + "px"');
-  left: v-bind('mouseX + "px"');
-  translate: -50% -50%;
-  width: v-bind('cursorSize + "px"');
-  aspect-ratio: 1;
-  border-radius: 50%;
-  pointer-events: none;
-  border: 1px solid black;
-  outline: 1px solid white;
-
-  &[data-in-canvas] {
-    display: block;
-  }
-}
-
-@media not (hover: hover) {
-  .mouse-cursor {
-    display: none;
-  }
-} */
 </style>

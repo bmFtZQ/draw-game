@@ -413,16 +413,18 @@ let canvasToolbox: HTMLElement | undefined;
 let canvasWrapper: HTMLElement | undefined;
 let gameAreaHeight = 0;
 
+watch(canvas, (value) => {
+  if (value?.$el instanceof HTMLElement) {
+    canvasToolbox = value.$el.querySelector<HTMLElement>('.toolbox') ?? undefined;
+    canvasWrapper = value.$el.querySelector<HTMLElement>('.canvas') ?? undefined;
+  }
+}, { immediate: true });
+
 const canvasWidth = ref(0);
 const canvasToolboxOffsetY = ref(0);
 
 function resize({ height }: { height: number }) {
   gameAreaHeight = height;
-  const drawCanvas = canvas.value?.$el;
-  if (!(drawCanvas instanceof HTMLElement)) return;
-
-  canvasToolbox ??= drawCanvas.querySelector<HTMLElement>('div.toolbox') ?? undefined;
-  canvasWrapper ??= drawCanvas.querySelector<HTMLElement>('.canvas') ?? undefined;
   if (!canvasToolbox || !canvasWrapper) return;
 
   resizeToolbox();

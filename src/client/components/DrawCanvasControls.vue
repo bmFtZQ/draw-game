@@ -15,7 +15,7 @@ const props = withDefaults(defineProps<{
   lineWidthOptions?: number[]
 }>(), {
   pointerdown: false,
-  lineWidthOptions: () => [3, 6, 9, 15, 30, 60]
+  lineWidthOptions: () => [3, 6, 9, 30, 60]
 });
 
 const model = defineModel<{
