@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { DrawType, type DrawInstruction, type DrawLineInstruction, type EraseLineInstruction } from '../../shared/draw-v1';
+import { DrawType, type CurveDrawInstruction, type DrawInstruction, type LineToDrawInstruction, type MoveDrawInstruction } from '../../shared/draw-v1';
 import { colors, unhandled } from '@/utils';
 
 const props = defineProps<{
@@ -39,44 +39,81 @@ function drawImage(image: DrawInstruction[]) {
 function drawInstruction(instruction: DrawInstruction) {
   switch (instruction.type) {
     case DrawType.CLEAR: clear(); break;
+    case DrawType.MOVE: move(instruction); break;
     case DrawType.DRAW_LINE: line(instruction); break;
-    case DrawType.ERASE_LINE: erase(instruction); break;
+    case DrawType.QUADRATIC_CURVE: curve(instruction); break;
     default: unhandled(instruction);
   }
+}
+
+function applyAppearance({ color, width }: { color: number, width: number }) {
+  if (!ctx) return;
+
+  ctx.lineWidth = width * scale.value;
+  ctx.fillStyle = colors[color];
+  ctx.strokeStyle = colors[color];
+  ctx.lineCap = 'round';
+
+  ctx.globalCompositeOperation = color === -1
+    ? 'destination-out'
+    : 'source-over';
 }
 
 function clear() {
   ctx?.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 }
 
-function erase(instruction: EraseLineInstruction) {
-  if (!ctx) return;
+let previous = { x: 0, y: 0 };
 
-  ctx.lineWidth = instruction.width * scale.value;
-  ctx.lineCap = 'round';
-  ctx.globalCompositeOperation = 'destination-out';
-  const path = new Path2D();
-  path.moveTo(instruction.from_x * scale.value, instruction.from_y * scale.value);
-  path.lineTo(instruction.to_x * scale.value, instruction.to_y * scale.value);
-  ctx.stroke(path);
-  ctx.globalCompositeOperation = 'source-over';
+function move(instruction: MoveDrawInstruction) {
+  const { x, y } = instruction;
+  previous = { x, y };
 }
 
-function line(instruction: DrawLineInstruction) {
+function line(instruction: LineToDrawInstruction) {
   if (!ctx) return;
-  ctx.lineWidth = instruction.width * scale.value;
-  ctx.strokeStyle = colors[instruction.color];
-  ctx.lineCap = 'round';
 
-  if (instruction.color === -1) {
-    ctx.globalCompositeOperation = 'destination-out';
+  const { x: px, y: py } = previous;
+  const { x, y, width } = instruction;
+  applyAppearance(instruction);
+
+  console.log(width);
+
+  if (x === px && y === py) {
+    const path = new Path2D();
+    path.arc(
+      x * scale.value, y * scale.value,
+      ctx.lineWidth / 2,
+      0, Math.PI * 2
+    );
+    ctx.fill(path);
   }
+  else {
+    const path = new Path2D();
+    path.moveTo(px * scale.value, py * scale.value);
+    path.lineTo(x * scale.value, y * scale.value);
+    ctx.stroke(path);
+    previous = { x, y };
+  }
+}
+
+function curve(instruction: CurveDrawInstruction) {
+  if (!ctx) return;
+
+  const { x: px, y: py } = previous;
+  const { cx, cy, x, y } = instruction;
+  applyAppearance(instruction);
 
   const path = new Path2D();
-  path.moveTo(instruction.from_x * scale.value, instruction.from_y * scale.value);
-  path.lineTo(instruction.to_x * scale.value, instruction.to_y * scale.value);
+  path.moveTo(px * scale.value, py * scale.value);
+  path.quadraticCurveTo(
+    cx * scale.value,
+    cy * scale.value,
+    x * scale.value,
+    y * scale.value
+  );
   ctx.stroke(path);
-  ctx.globalCompositeOperation = 'source-over';
+  previous = { x, y };
 }
 
 defineExpose({ clear, drawImage, drawInstruction, canvas, ctx });

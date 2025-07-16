@@ -290,9 +290,10 @@ export interface OwnerChangeMessage {
 }
 
 export enum DrawType {
+  TOOLS_CHANGE,
   CLEAR,
+  MOVE,
   DRAW_LINE,
-  ERASE_LINE,
   QUADRATIC_CURVE
 }
 
@@ -301,33 +302,40 @@ export interface DrawMessage {
   instructions: DrawInstruction[];
 }
 
-export type DrawInstruction = DrawLineInstruction
-  | EraseLineInstruction
-  | DrawClearInstruction;
+export type DrawInstruction = ClearDrawInstruction
+  | MoveDrawInstruction
+  | LineToDrawInstruction
+  | CurveDrawInstruction;
 
-
-export interface DrawClearInstruction {
+export interface ClearDrawInstruction {
   type: DrawType.CLEAR;
 }
 
-interface LineInstruction {
-  from_x: number;
-  from_y: number;
-  to_x: number;
-  to_y: number;
-  width: number;
+export interface MoveDrawInstruction {
+  type: DrawType.MOVE;
+  x: number;
+  y: number;
 }
 
-export interface DrawLineInstruction extends LineInstruction {
+export interface LineToDrawInstruction {
   type: DrawType.DRAW_LINE;
+  x: number;
+  y: number;
+  width: number;
   color: number;
 }
 
-export interface EraseLineInstruction extends LineInstruction {
-  type: DrawType.ERASE_LINE;
+export interface CurveDrawInstruction {
+  type: DrawType.QUADRATIC_CURVE;
+  cx: number;
+  cy: number;
+  x: number;
+  y: number;
+  width: number;
+  color: number;
 }
 
-// export interface DrawFillInstruction {
+// export interface FillDrawInstruction {
 //   type: 'fill';
 //   x: number;
 //   y: number;

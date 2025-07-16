@@ -44,8 +44,13 @@ export class Room extends EventEmitter {
     const loginMsg: LoginResponse = {
       type: MessageType.LOGIN_RESPONSE,
       draw_instructions: [
-        { type: DrawType.DRAW_LINE, color: 2, from_x: 50, from_y: 410, to_x: 590, to_y: 50, width: 200 },
-        { type: DrawType.DRAW_LINE, color: 5, from_x: 50, from_y: 50, to_x: 590, to_y: 410, width: 200 }
+        { type: DrawType.MOVE, x: 50, y: 410 },
+        { type: DrawType.DRAW_LINE, color: 2, x: 590, y: 50, width: 200 },
+        { type: DrawType.MOVE, x: 50, y: 50 },
+        { type: DrawType.DRAW_LINE, color: 5, x: 590, y: 410, width: 200 },
+        { type: DrawType.MOVE, x: 50, y: 50 },
+        { type: DrawType.QUADRATIC_CURVE, color: 9, cx: 250, cy: 50, x: 250, y: 250, width: 15 },
+
       ],
       me: id,
       owner: this.#roomOwner,

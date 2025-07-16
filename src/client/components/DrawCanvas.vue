@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onUnmounted, ref, watch } from 'vue';
-import { DrawType, type DrawClearInstruction, type DrawInstruction, type DrawLineInstruction, type EraseLineInstruction } from '../../shared/draw-v1';
+import { DrawType, type ClearDrawInstruction, type DrawInstruction, type LineToDrawInstruction, type MoveDrawInstruction } from '../../shared/draw-v1';
 import Canvas from './Canvas.vue';
 import Grid from './containers/Grid.vue';
 
@@ -38,14 +38,14 @@ function drawInstruction(instruction: DrawInstruction) {
 }
 
 function clear() {
-  const inst: DrawClearInstruction = { type: DrawType.CLEAR };
+  const inst: ClearDrawInstruction = { type: DrawType.CLEAR };
   emitInstruction(inst);
   canvas.value?.clear();
 }
 
 defineExpose({ importImage, clear, canvas });
 
-const prevEvent = ref({ clientX: 0, clientY: 0 });
+let previous = { x: 0, y: 0, pressure: 0 };
 const mouseDown = ref(false);
 
 function translateMouse(x: number, y: number): { x: number, y: number } {
@@ -62,8 +62,13 @@ function translateMouse(x: number, y: number): { x: number, y: number } {
 function onPointerDown(e: PointerEvent) {
   if (!props.canDraw) return;
   mouseDown.value = true;
-  const mouse = translateMouse(e.clientX, e.clientY);
-  prevEvent.value = { clientX: mouse.x, clientY: mouse.y };
+  const { x, y } = translateMouse(e.clientX, e.clientY);
+
+  const instruction: MoveDrawInstruction = { type: DrawType.MOVE, x, y };
+  drawInstruction(instruction);
+  emitInstruction(instruction);
+  previous = { x, y, pressure: e.pressure };
+
   window.addEventListener('pointermove', onPointerMove);
   window.addEventListener('pointerup', onPointerUp);
 }
@@ -71,43 +76,36 @@ function onPointerDown(e: PointerEvent) {
 function onPointerUp(e: PointerEvent) {
   mouseDown.value = false;
   window.removeEventListener('pointermove', onPointerMove);
-  const mouse = translateMouse(e.clientX, e.clientY);
-  const { clientX: prevX, clientY: prevY } = prevEvent.value;
 
-  if (prevX === mouse.x && prevY === mouse.y) {
-    const li: DrawLineInstruction | EraseLineInstruction = {
-      type: tool.value === 'erase' ? DrawType.ERASE_LINE : DrawType.DRAW_LINE,
-      color: color.value,
-      from_x: mouse.x,
-      from_y: mouse.y,
-      to_x: mouse.x + 2,
-      to_y: mouse.y,
-      width: lineWidth.value * e.pressure * 2
-    };
-    drawInstruction(li);
-    emitInstruction(li);
+  const { x, y } = translateMouse(e.clientX, e.clientY);
+  const { x: px, y: py, pressure } = previous;
+
+  if (x === px && y === py) {
+    const instruction: LineToDrawInstruction = {
+      type: DrawType.DRAW_LINE,
+      color: tool.value === 'brush' ? color.value : -1,
+      x, y,
+      width: lineWidth.value * pressure * 2
+    }
+    drawInstruction(instruction);
+    emitInstruction(instruction);
   }
 }
 
 function onPointerMove(e: PointerEvent) {
   if (!mouseDown.value) return;
-  const { clientX: prevX, clientY: prevY } = prevEvent.value;
-  const mouse = translateMouse(e.clientX, e.clientY);
+  const { x, y } = translateMouse(e.clientX, e.clientY);
 
-  const li: DrawLineInstruction | EraseLineInstruction = {
-    type: tool.value === 'erase' ? DrawType.ERASE_LINE : DrawType.DRAW_LINE,
-    color: color.value,
-    from_x: prevX,
-    from_y: prevY,
-    to_x: mouse.x,
-    to_y: mouse.y,
+  const instruction: LineToDrawInstruction = {
+    type: DrawType.DRAW_LINE,
+    color: tool.value === 'brush' ? color.value : -1,
+    x, y,
     width: lineWidth.value * e.pressure * 2
   };
 
-  canvas.value?.drawInstruction(li);
-  emitInstruction(li);
-
-  prevEvent.value = { clientX: mouse.x, clientY: mouse.y };
+  canvas.value?.drawInstruction(instruction);
+  emitInstruction(instruction);
+  previous = { x, y, pressure: e.pressure };
 }
 
 onUnmounted(() => {
@@ -115,14 +113,14 @@ onUnmounted(() => {
   window.removeEventListener('pointerup', onPointerUp);
 });
 
-function emitInstruction(inst: DrawInstruction) {
-  if (inst.type === DrawType.CLEAR) {
+function emitInstruction(instruction: DrawInstruction) {
+  if (instruction.type === DrawType.CLEAR) {
     image.value.length = 0;
   }
   else {
-    image.value.push(inst);
+    image.value.push(instruction);
   }
-  emit('draw', inst);
+  emit('draw', instruction);
 }
 
 const tool = ref<'brush' | 'erase'>('brush');
