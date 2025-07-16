@@ -6,17 +6,20 @@ export type Message = ClientMessage | ServerMessage;
 /**
  * Messages that a client can send to the server.
  */
-export type ClientMessage = LoginRequest
+export type ClientMessage = OkMessage
+  | LoginRequest
   | StartGameMessage
   | StopMessage
   | WordChosenMessage
   | SendChatMessage
+  | SetOptionsMessage
   | DrawMessage;
 
 /**
  * Messages that the server will send to a client.
  */
 export type ServerMessage = ErrorMessage
+  | OkMessage
   | LoginResponse
   | PlayerJoinMessage
   | PlayerLeaveMessage
@@ -31,6 +34,7 @@ export type ServerMessage = ErrorMessage
   | PlayerGuessedMessage
   | AlmostGuessMessage
   | OwnerChangeMessage
+  | SetOptionsMessage
   | DrawMessage;
 
 export interface Player {
@@ -50,7 +54,7 @@ export interface GameSettings {
 }
 
 export const defaultSettings: GameSettings = {
-  timer: 300,
+  timer: 80,
   choose_word_timer: 10,
   max_hints: 5,
   rounds_per_game: 3
@@ -58,6 +62,7 @@ export const defaultSettings: GameSettings = {
 
 export enum MessageType {
   ERROR = -1,
+  OK,
   LOGIN_REQUEST,
   LOGIN_RESPONSE,
   START_GAME,
@@ -76,14 +81,21 @@ export enum MessageType {
   PLAYER_GUESSED,
   CHAT,
   OWNER_CHANGE,
-  DRAW
+  DRAW,
+  SET_OPTIONS
 }
 
 export enum ErrorCode {
   UNKNOWN_MESSAGE,
   INVALID_MESSAGE,
   NOT_ENOUGH_PLAYERS,
-  NOT_PERMITTED
+  NOT_PERMITTED,
+  INVALID_SETTINGS
+}
+
+export interface OkMessage {
+  type: MessageType.OK;
+  response_to?: MessageType;
 }
 
 export interface TimerUpdate {
@@ -287,6 +299,14 @@ export interface PlayerGuessedMessage {
 export interface OwnerChangeMessage {
   type: MessageType.OWNER_CHANGE;
   player_id: number;
+}
+
+/**
+ * Broadcast when the host of the room changes, e.g. previous host left.
+ */
+export interface SetOptionsMessage {
+  type: MessageType.SET_OPTIONS;
+  settings: GameSettings;
 }
 
 export enum DrawType {

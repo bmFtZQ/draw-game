@@ -259,6 +259,13 @@ websocket.onmessage = e => {
       console.error('An error occurred:', ErrorCode[msg.code], msg.detail);
       break;
 
+    case MessageType.OK:
+      break;
+
+    case MessageType.SET_OPTIONS:
+      gameSettings.value = msg.settings;
+      break;
+
     default:
       unhandled(msg);
   }
@@ -275,6 +282,7 @@ function applyState(msg: LoginResponse) {
   wordHint.value = msg.word_hint;
   state.value = msg.state;
   canvas.value?.importImage(msg.draw_instructions);
+  gameSettings.value = msg.settings;
 }
 
 const messageScreen = ref<string>('loading');
@@ -404,9 +412,6 @@ function onScrollToBottomClick() {
   elm?.scrollIntoView();
 }
 
-const settingsVisible = ref(false);
-const gameSettings = ref(structuredClone(defaultSettings))
-
 let canvasToolbox: HTMLElement | undefined;
 let canvasWrapper: HTMLElement | undefined;
 let gameAreaHeight = 0;
@@ -443,6 +448,17 @@ const drawCanvasModel = ref({
   lineWidth: 6,
   color: 1
 });
+
+const settingsVisible = ref(false);
+const gameSettings = ref(structuredClone(defaultSettings));
+
+function onSaveSettingsClick() {
+  sendMessage({
+    type: MessageType.SET_OPTIONS,
+    settings: gameSettings.value
+  });
+  settingsVisible.value = false;
+}
 
 </script>
 
@@ -596,7 +612,7 @@ const drawCanvasModel = ref({
           <label for="max-hints-input">Maximum hints per turn</label>
           <InputNumber v-model="gameSettings.max_hints" inputId="max-hints-input" showButtons />
         </FloatLabel>
-        <Button label="Save">
+        <Button label="Save" @click="onSaveSettingsClick">
           <template #icon>
             <MaterialIcon icon="save" />
           </template>

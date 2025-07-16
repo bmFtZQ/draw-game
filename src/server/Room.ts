@@ -500,7 +500,50 @@ export class Room extends EventEmitter {
         this.stopGame();
         break;
 
+      case MessageType.OK:
       case MessageType.LOGIN_REQUEST:
+        break;
+
+      case MessageType.SET_OPTIONS:
+        if (ws === this.getClient(this.#roomOwner)) {
+          const s = msg.settings;
+
+          const verify = (condition: boolean, detail: string) => {
+            if (condition) return true;
+            this.messagePlayer(ws, {
+              type: MessageType.ERROR,
+              code: ErrorCode.INVALID_SETTINGS,
+              detail
+            });
+            return false;
+          }
+
+          if (!verify(typeof s.timer === 'number' && s.timer > 0,
+            'timer must be a number greater than zero.')) break;
+
+          if (!verify(typeof s.choose_word_timer === 'number' && s.choose_word_timer > 0,
+            'choose_word_timer must be a number greater than zero.'
+          )) break;
+
+          if (!verify(typeof s.max_hints === 'number' && s.max_hints > 0,
+            'max_hints must be a number greater than zero.'
+          )) break;
+
+          if (!verify(typeof s.rounds_per_game === 'number' && s.rounds_per_game > 0,
+            'rounds_per_game must be a number greater than zero.'
+          )) break;
+
+          this.settings = s;
+          this.messageOtherPlayers(this.#roomOwner, {
+            type: MessageType.SET_OPTIONS,
+            settings: this.settings
+          });
+
+          this.messagePlayer(ws, {
+            type: MessageType.OK,
+            response_to: MessageType.SET_OPTIONS
+          });
+        }
         break;
 
       default:
