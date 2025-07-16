@@ -77,8 +77,6 @@ function line(instruction: LineToDrawInstruction) {
   const { x, y, width } = instruction;
   applyAppearance(instruction);
 
-  console.log(width);
-
   if (x === px && y === py) {
     const path = new Path2D();
     path.arc(

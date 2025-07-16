@@ -20,9 +20,10 @@ const props = defineProps<{
 const root = ref<HTMLElement>();
 
 onMounted(() => {
-  const elm = document.querySelector('#app > .page-wrapper');
+  const elm = document.querySelector('#app > .page-wrapper .game-area');
   if (elm) {
-    resize(elm.getBoundingClientRect());
+    setTimeout(() => resize({ height: elm.clientHeight }), 0);
+    setTimeout(() => resize({ height: elm.clientHeight }), 500);
   }
 });
 
@@ -391,31 +392,41 @@ function onAfterEnterChat(el: Element) {
 
 function onScrollToBottomClick() {
   chatScrolledToBottom.value = true;
-  const elm = chatContainer.value?.querySelector(':scope > *:last-child');
+  const elm = chatContainer.value?.querySelector<HTMLElement>(':scope > *:last-child') ?? undefined;
   elm?.scrollIntoView();
 }
 
 const settingsVisible = ref(false);
 const gameSettings = ref(structuredClone(defaultSettings))
 
-const canvasWidth = ref('');
-
 let canvasToolbox: HTMLElement | undefined;
+let canvasWrapper: HTMLElement | undefined;
+let gameAreaHeight = 0;
 
-function resize({ width, height }: { width: number, height: number }) {
-  if (canvas.value?.$el instanceof HTMLElement) {
-    canvasToolbox ??= canvas.value.$el.querySelector('.toolbox') as HTMLElement ?? undefined;
-  }
-  const w = (height - (canvasToolbox?.clientHeight ?? -16) - 108) / 3 * 4;
-  canvasWidth.value = `${w}px`;
+const canvasWidth = ref(0);
+const canvasToolboxOffsetY = ref(0);
+
+function resize({ height }: { height: number }) {
+  gameAreaHeight = height;
+  const drawCanvas = canvas.value?.$el;
+  if (!(drawCanvas instanceof HTMLElement)) return;
+
+  canvasToolbox ??= drawCanvas.querySelector<HTMLElement>('div.toolbox') ?? undefined;
+  canvasWrapper ??= drawCanvas.querySelector<HTMLElement>('.canvas') ?? undefined;
+  if (!canvasToolbox || !canvasWrapper) return;
+
+  resizeToolbox();
+
+  canvasWidth.value = Math.max((height) / 3 * 4, 250);
 }
 
-// watch(() => canvas.value?.canDraw, () => {
-//   const elm = document.querySelector('#app > .page-wrapper');
-//   if (elm) {
-//     resize(elm.getBoundingClientRect());
-//   }
-// });
+function resizeToolbox() {
+  if (!canvasToolbox || !canvasWrapper) return;
+
+  const space = gameAreaHeight - canvasWrapper.clientHeight;
+  const offset = space;
+  canvasToolboxOffsetY.value = clamp(offset, 0, canvasToolbox.clientHeight);
+}
 
 const drawCanvasModel = ref({
   tool: 'brush' as 'brush' | 'erase',
@@ -426,7 +437,7 @@ const drawCanvasModel = ref({
 </script>
 
 <template>
-  <main ref="root" class="page" v-resize:0.immediate="resize">
+  <main ref="root" class="page">
     <div class="info-bar">
       <div class="timer">{{ timeLeft }}s</div>
       <div class="word">{{ wordHint }}</div>
@@ -457,76 +468,76 @@ const drawCanvasModel = ref({
       </Button>
     </div>
 
-    <div class="game-area">
-      <!-- <DrawCanvas ref="canvas" @draw="onDraw" :width="640" :height="480" :scale="2"
-        :canDraw="current === me && state === 'in-turn'" :tools="drawCanvasModel"> -->
-      <DrawCanvas ref="canvas" @draw="onDraw" :width="640" :height="480" :scale="2" :canDraw="true"
-        :tools="drawCanvasModel">
-
-        <template #after-canvas>
-          <MessageContainer :selected="''">
-            <template #waiting-for-host>
-              <div class="title">
-                <span v-if="roomOwner === me">
-                  <span v-if="players.length > 1">
-                    Click 'Start game' to begin...
-                    <Button label="Start" severity="transparent"></Button>
+    <div class="game-area" v-resize:0.immediate="resize">
+      <div class="canvas-wrapper">
+        <DrawCanvas ref="canvas" @draw="onDraw" :width="640" :height="480" :scale="2" :canDraw="true"
+          :tools="drawCanvasModel">
+          <template #after-canvas>
+            <MessageContainer :selected="''">
+              <template #waiting-for-host>
+                <div class="title">
+                  <span v-if="roomOwner === me">
+                    <span v-if="players.length > 1">
+                      Click 'Start game' to begin...
+                      <Button label="Start" severity="transparent"></Button>
+                    </span>
+                    <span v-else>Waiting for more players…</span>
                   </span>
-                  <span v-else>Waiting for more players…</span>
-                </span>
-                <span v-else>Waiting for host...</span>
-              </div>
-            </template>
-            <template #loading>
-              <div class="loading-msg">
-                <LoadingSpinner :size="48" :thickness="4" />
-                <div class="title">Loading</div>
-              </div>
-            </template>
-            <template #final-leaderboard>
-              <div class="title">Final results for this game.</div>
-              <ol class="winner-list">
-                <li v-for="player in leaderboard" :key="player.id" :value="player.position">
-                  <span>{{ player.name }}</span>: <span>{{ player.score }} pts.</span>
-                </li>
-              </ol>
-            </template>
-            <template #round>
-              Round {{ round }}
-            </template>
-            <template #leaderboard>
-              <div class="leaderboard">
-                <div class="title">The word was {{ wordHint }}!</div>
-                <div class="reason">
-                  <span v-if="endReason === 'guessed'">Everyone guessed the word!</span>
-                  <span v-if="endReason === 'time-out'">Time ran out!</span>
-                  <span v-if="endReason === 'kick'">The player was kicked!</span>
-                  <span v-if="endReason === 'left'">The player left!</span>
+                  <span v-else>Waiting for host...</span>
                 </div>
-                <ol>
-                  <li v-for="player in players" :key="player.id" :class="{ guessed: player.has_guessed }">
-                    {{ player.name }}: {{ player.score }} pts.
-                    <span v-if="player.newScore">(+{{ player.newScore }})</span>
+              </template>
+              <template #loading>
+                <div class="loading-msg">
+                  <LoadingSpinner :size="48" :thickness="4" />
+                  <div class="title">Loading</div>
+                </div>
+              </template>
+              <template #final-leaderboard>
+                <div class="title">Final results for this game.</div>
+                <ol class="winner-list">
+                  <li v-for="player in leaderboard" :key="player.id" :value="player.position">
+                    <span>{{ player.name }}</span>: <span>{{ player.score }} pts.</span>
                   </li>
                 </ol>
-              </div>
-            </template>
-            <template #choose-word>
-              <div class="word-chooser">
-                <div class="title">Choose a word:</div>
-                <div class="word-options">
-                  <Button v-for="[i, word] in wordOptions.entries()" :key="word" @click="chooseWord(i)"
-                    :label="wordOptions[i]" severity="transparent"></Button>
+              </template>
+              <template #round>
+                Round {{ round }}
+              </template>
+              <template #leaderboard>
+                <div class="leaderboard">
+                  <div class="title">The word was {{ wordHint }}!</div>
+                  <div class="reason">
+                    <span v-if="endReason === 'guessed'">Everyone guessed the word!</span>
+                    <span v-if="endReason === 'time-out'">Time ran out!</span>
+                    <span v-if="endReason === 'kick'">The player was kicked!</span>
+                    <span v-if="endReason === 'left'">The player left!</span>
+                  </div>
+                  <ol>
+                    <li v-for="player in players" :key="player.id" :class="{ guessed: player.has_guessed }">
+                      {{ player.name }}: {{ player.score }} pts.
+                      <span v-if="player.newScore">(+{{ player.newScore }})</span>
+                    </li>
+                  </ol>
                 </div>
-              </div>
-            </template>
-            <template #choosing-word>
-              {{ currentPlayer?.name }} is choosing a word…
-            </template>
-          </MessageContainer>
-          <DrawCanvasControls v-model="drawCanvasModel" @clear="canvas?.clear" />
-        </template>
-      </DrawCanvas>
+              </template>
+              <template #choose-word>
+                <div class="word-chooser">
+                  <div class="title">Choose a word:</div>
+                  <div class="word-options">
+                    <Button v-for="[i, word] in wordOptions.entries()" :key="word" @click="chooseWord(i)"
+                      :label="wordOptions[i]" severity="transparent"></Button>
+                  </div>
+                </div>
+              </template>
+              <template #choosing-word>
+                {{ currentPlayer?.name }} is choosing a word…
+              </template>
+            </MessageContainer>
+            <DrawCanvasControls v-model="drawCanvasModel" @clear="canvas?.clear" v-resize:0.immediate="resizeToolbox" />
+          </template>
+        </DrawCanvas>
+      </div>
+
     </div>
 
     <div class="chat-area">
@@ -589,7 +600,7 @@ const drawCanvasModel = ref({
 main {
   --player-list-width: clamp(16ch, 15vw, 25ch);
   --chat-width: clamp(22ch, 18vw, 30ch);
-  --canvas-width: v-bind(canvasWidth);
+  --canvas-width: calc(1px * v-bind(canvasWidth));
 
   display: grid;
   grid-template-areas:
@@ -631,6 +642,10 @@ main {
   flex-direction: column;
   gap: 0.5rem;
   overflow: auto;
+
+  /* Allows shadow to be visible with overflow: auto */
+  padding: 0.25rem;
+  margin: -0.25rem;
 }
 
 .settings-dialog {
@@ -645,9 +660,45 @@ main {
   display: grid;
   grid-area: game;
   max-width: var(--canvas-width);
+  position: relative;
 
-  > * {
-    grid-area: 1/1/1/1;
+  .canvas-wrapper {
+    position: absolute;
+    inset: 0;
+    display: grid;
+
+    > * {
+      grid-area: 1/1/1/1;
+    }
+  }
+
+  @media (width < 60rem) {
+    max-width: 100%;
+
+    .canvas-wrapper {
+      position: static;
+      width: 100%;
+
+      > * {
+        grid-area: 1/1/1/1;
+      }
+    }
+
+    :deep(.toolbox) {
+      translate: 0 0 !important;
+    }
+
+    :deep(.canvas) {
+      margin-bottom: 0 !important;
+    }
+  }
+
+  :deep(.toolbox) {
+    translate: 0 calc(1px * v-bind(canvasToolboxOffsetY));
+  }
+
+  :deep(.canvas) {
+    margin-bottom: calc(1px * v-bind(canvasToolboxOffsetY));
   }
 
   :deep(canvas) {
@@ -706,7 +757,7 @@ main {
   grid-area: info;
   display: grid;
   grid-template-areas:
-    "timer word ."
+    "timer    word        .    "
     "progress progress progress";
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr);
@@ -728,8 +779,7 @@ main {
   .timer-progress {
     position: relative;
     grid-area: progress;
-    background: light-dark(rgb(from black r g b / 0.10),
-        rgb(from white r g b / 0.15));
+    background: light-dark(rgb(from black r g b / 0.10), rgb(from white r g b / 0.15));
     width: 100%;
     height: 0.25rem;
     border-radius: 1rem;

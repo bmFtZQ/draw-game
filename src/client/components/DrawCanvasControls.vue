@@ -37,7 +37,7 @@ const icons: Record<Tools, { icon: string, label: string }> = {
   erase: { icon: 'ink_eraser', label: 'Erase' }
 }
 
-const lineWidthOptions = [3, 6, 9, 15];
+const lineWidthOptions = [3, 6, 9, 15, 30, 60];
 
 const colorOptions = range(26);
 
@@ -105,17 +105,71 @@ watch(() => model.value.color, () => {
 
 <style scoped>
 .toolbox {
+  --p-card-background: light-dark(rgb(240 240 240 / 0.65), rgb(72 72 72 / 0.65));
+  --base-bg: light-dark(rgb(255 255 255 / 0.4), rgb(255 255 255 / 0.1));
+  --base-border: light-dark(rgb(255 255 255 / 0.3), rgb(255 255 255 / 0.1));
+  --shadow:
+    0 0 1px rgb(0 0 0 / 0.1),
+    0 1px 2px rgb(0 0 0 / 0.1);
+
+  --p-card-color: light-dark(rgb(0 0 0 / 0.75), white);
+  --p-card-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.1),
+    inset 0 1px rgb(255 255 255 / 0.1),
+    0 0 3px light-dark(rgb(0 0 0 / 0.1), rgb(0 0 0 / 0.25)),
+    0 2px 3px light-dark(rgb(0 0 0 / 0.1), rgb(0 0 0 / 0.25));
+
+  --p-select-background: var(--base-bg);
+  --p-select-color: var(--p-card-color);
+  --p-select-dropdown-color: ;
+  --p-select-border-color: var(--base-border);
+  --p-select-shadow: var(--shadow);
+  --p-select-focus-ring-shadow: var(--p-select-shadow);
+
+  --p-select-hover-border-color: light-dark(rgb(255 255 255 / 0.5), rgb(255 255 255 / 0.25));
+  --p-select-focus-border-color: rgb(255 255 255 / 0.6);
+
+  --p-togglebutton-background: light-dark(rgb(192 192 192 / 0.35), rgb(255 255 255 / 0.1));
+  --p-togglebutton-border-color: var(--base-border);
+  --p-togglebutton-color: var(--p-card-color);
+  --p-togglebutton-hover-background: var(--p-togglebutton-background);
+  --p-togglebutton-hover-color: var(--p-card-color);
+
+  --p-togglebutton-checked-background: var(--p-togglebutton-background);
+  --p-togglebutton-checked-border-color: var(--base-border);
+  --p-togglebutton-checked-color: rgb(0 0 0 / 0.75);
+
+  --p-togglebutton-content-checked-background: light-dark(rgb(255 255 255 / 1), rgb(255 255 255 / 0.75));
+  --p-togglebutton-content-checked-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.1),
+    var(--shadow);
+
+  --p-button-secondary-background: var(--base-bg);
+  --p-button-secondary-color: var(--p-card-color);
+  --p-button-secondary-border-color: var(--base-border);
+
+  --p-button-secondary-hover-background: rgb(from var(--base-bg) r g b / calc(alpha * 2));
+  --p-button-secondary-hover-color: var(--p-card-color);
+  --p-button-secondary-hover-border-color: rgb(255 255 255 / 0.25);
+
+  --p-button-secondary-active-background: light-dark(rgb(0 0 0 / 0.05), rgb(255 255 255 / 0.25));
+  --p-button-secondary-active-color: var(--p-card-color);
+  --p-button-secondary-active-border-color: rgb(255 255 255 / 0.35);
+  --p-button-secondary-shadow: var(--shadow);
+}
+
+:deep(.p-button) {
+  box-shadow: var(--p-button-secondary-shadow);
+}
+
+.toolbox {
   position: absolute;
   inset-inline: 1rem;
   margin: auto;
   width: min-content;
   max-width: calc(100% - 2rem);
-  bottom: 1rem;
+  bottom: 0rem;
   transition: translate 750ms cubic-bezier(.42, 1.53, .41, 1.01);
-
-  /* & {
-    translate: 0 6rem;
-  } */
 }
 
 .line-width,
@@ -137,7 +191,7 @@ watch(() => model.value.color, () => {
   width: 1rem;
 
   &::before {
-    width: 2px;
+    width: 1px;
     scale: var(--_line-width);
     background-color: currentColor;
     border-radius: 50%;
