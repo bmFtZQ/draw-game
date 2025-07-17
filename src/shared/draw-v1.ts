@@ -28,6 +28,7 @@ export type ServerMessage = ErrorMessage
   | TurnStartMessage
   | TurnEndMessage
   | GameEndMessage
+  | TimerUpdateMessage
   | StopMessage
   | RevealHintMessage
   | ChatMessage
@@ -84,7 +85,8 @@ export enum MessageType {
   CHAT,
   OWNER_CHANGE,
   DRAW,
-  SET_OPTIONS
+  SET_OPTIONS,
+  TIMER
 }
 
 export enum ErrorCode {
@@ -234,8 +236,8 @@ export interface TurnEndMessage {
   type: MessageType.TURN_END;
   reason: 'time-out' | 'guessed' | 'kick' | 'left';
   word: string;
-  scores: {
-    player_id: number;
+  scores?: {
+    id: number;
     points: number;
   }[];
   timer: TimerUpdate;
@@ -248,9 +250,17 @@ export interface TurnEndMessage {
 export interface GameEndMessage {
   type: MessageType.GAME_END,
   scores: {
-    player_id: number;
+    id: number;
     points: number;
   }[];
+}
+
+/**
+ * Broadcast to all clients that the current timer expiry had updated.
+ */
+export interface TimerUpdateMessage {
+  type: MessageType.TIMER,
+  timer: TimerUpdate;
 }
 
 /**

@@ -93,8 +93,8 @@ function resetPlayers(alsoScore?: boolean) {
 watch(state, () => {
   switch (state.value) {
     case 'new-round':
-      wordHint.value = '...';
       wordHintHeader.value = 'Waiting';
+      wordHint.value = '';
       messageScreen.value = 'round';
       break;
 
@@ -110,7 +110,7 @@ watch(state, () => {
       break;
 
     case 'end-game':
-      wordHint.value = '...';
+      wordHint.value = '';
       wordHintHeader.value = 'End of game';
       messageScreen.value = 'final-leaderboard';
       current.value = -1;
@@ -129,7 +129,7 @@ watch(state, () => {
       resetPlayers(true);
       current.value = -1;
       wordHintHeader.value = 'Waiting';
-      wordHint.value = '...';
+      wordHint.value = '';
       break;
 
     default:
@@ -179,7 +179,7 @@ websocket.onmessage = e => {
         player,
         content: msg.content,
         me: player.id === me.value,
-        guessed: player.has_guessed
+        guessed: player.has_guessed || player.id === current.value
       });
       break;
     }
@@ -211,7 +211,7 @@ websocket.onmessage = e => {
       wordOptions.value = msg.words ?? [];
       state.value = 'choosing-word';
       wordHintHeader.value = me.value === msg.current_player_id ? 'Choose a word' : 'Waiting';
-      wordHint.value = '...';
+      wordHint.value = '';
       break;
 
     case MessageType.TURN_START: {
@@ -219,6 +219,7 @@ websocket.onmessage = e => {
       current.value = msg.current_player_id;
       wordHint.value = msg.word_hint;
       wordHintHeader.value = me.value === msg.current_player_id ? 'Draw this:' : 'Guess this:';
+      resetTools();
       applyTimer(msg.timer.expires, msg.timer.start);
       state.value = 'in-turn';
       const player = findPlayer(msg.current_player_id)!;
@@ -234,7 +235,7 @@ websocket.onmessage = e => {
       endReason.value = msg.reason;
       wordHint.value = msg.word;
       wordHintHeader.value = 'Results for';
-      applyScores(msg.scores);
+      if (msg.scores) applyScores(msg.scores);
       state.value = 'end-turn';
       applyTimer(msg.timer.expires, msg.timer.start);
       addChatMessage({
@@ -249,7 +250,7 @@ websocket.onmessage = e => {
       addChatMessage({
         kind: 'game-end',
         winner: leaderboard.value[0][1],
-        score: leaderboard.value[0][0]
+        score: leaderboard.value[0][1].score
       })
       break;
 
@@ -274,6 +275,10 @@ websocket.onmessage = e => {
 
     case MessageType.SET_OPTIONS:
       gameSettings.value = msg.settings;
+      break;
+
+    case MessageType.TIMER:
+      applyTimer(msg.timer.expires, msg.timer.start);
       break;
 
     default:
@@ -322,12 +327,14 @@ function applyTimer(expires: number, start: number) {
   }, 100);
 }
 
-function applyScores(newScores: { player_id: number, points: number }[]) {
-  newScores.forEach(s => {
-    const player = findPlayer(s.player_id)!;
-    player.newScore = s.points;
-    player.score += s.points;
-  })
+function applyScores(newScores: { id: number, points: number }[]) {
+  players.value.forEach(p => {
+    const score = newScores.find(s => s.id === p.id);
+    if (score) {
+      p.newScore = score.points;
+      p.score += score.points;
+    }
+  });
 }
 
 function sendMessage(msg: ClientMessage) {
@@ -459,6 +466,14 @@ const drawCanvasModel = ref({
   color: 1
 });
 
+function resetTools() {
+  drawCanvasModel.value = {
+    tool: 'brush' as 'brush' | 'erase',
+    lineWidth: 6,
+    color: 1
+  };
+}
+
 const settingsVisible = ref(false);
 const gameSettings = ref(structuredClone(defaultSettings));
 
@@ -478,9 +493,13 @@ function onSaveSettingsClick() {
       <div class="timer">
         <span v-if="timeLeft">{{ timeLeft }}s</span>
       </div>
-      <div class="word">
+      <div class="word" :data-word-hint="wordHint || undefined">
         <div class="top">{{ wordHintHeader }}</div>
-        <div class="bottom">{{ wordHint }}</div>
+        <div class="bottom">
+          <TransitionGroup name="char">
+            <div class="char" v-for="[i, char] in [...(wordHint || '.')].entries()" :key="char + i">{{ char }}</div>
+          </TransitionGroup>
+        </div>
       </div>
       <div class="timer-progress"></div>
     </div>
@@ -582,31 +601,33 @@ function onSaveSettingsClick() {
     </div>
 
     <div class="chat-area">
-      <article ref="chatContainer" @scroll="onChatScroll" class="chat-content">
-        <TransitionGroup @enter="onAfterEnterChat" name="list">
-          <section v-for="[i, msg] in chatMessages.entries()" :key="i">
-            <ChatMessageComponent :msg="msg" />
-          </section>
-        </TransitionGroup>
-      </article>
-      <form class="chat-form" @submit.prevent="sendChat">
-        <Transition name="shrink">
-          <Button @click="onScrollToBottomClick" class="scroll-to-bottom-button backdrop-blur"
-            v-if="!chatScrolledToBottom" severity="secondary" label="Scroll to bottom">
+      <div class="chat-wrapper">
+        <article ref="chatContainer" @scroll="onChatScroll" class="chat-content">
+          <TransitionGroup @enter="onAfterEnterChat" name="list">
+            <section v-for="[i, msg] in chatMessages.entries()" :key="i">
+              <ChatMessageComponent :msg="msg" />
+            </section>
+          </TransitionGroup>
+        </article>
+        <form class="chat-form" @submit.prevent="sendChat">
+          <Transition name="shrink">
+            <Button @click="onScrollToBottomClick" class="scroll-to-bottom-button backdrop-blur"
+              v-if="!chatScrolledToBottom" severity="secondary" label="Scroll to bottom">
+              <template #icon>
+                <MaterialIcon icon="arrow_downward" />
+              </template>
+            </Button>
+          </Transition>
+          <InputText class="chat-input" @keydown.enter="sendChat" aria-label="Message" placeholder="Enter message…"
+            v-model="chatInput" fluid />
+          <Button class="send-button" type="submit" :disabled="!chatInput.length || !canSendChat"
+            aria-label="Send message">
             <template #icon>
-              <MaterialIcon icon="arrow_downward" />
+              <MaterialIcon icon="send" />
             </template>
           </Button>
-        </Transition>
-        <InputText class="chat-input" @keydown.enter="sendChat" aria-label="Message" placeholder="Enter message…"
-          v-model="chatInput" fluid />
-        <Button class="send-button" type="submit" :disabled="!chatInput.length || !canSendChat"
-          aria-label="Send message">
-          <template #icon>
-            <MaterialIcon icon="send" />
-          </template>
-        </Button>
-      </form>
+        </form>
+      </div>
     </div>
 
     <Dialog class="settings-dialog" v-model:visible="settingsVisible" modal header="Settings">
@@ -748,9 +769,11 @@ main {
     margin-bottom: calc(1px * v-bind(canvasToolboxOffsetY));
   }
 
-  :deep(canvas) {
-    filter: url(#blur-filter-2);
-  }
+  /* @media (width > 60rem) {
+    :deep(canvas) {
+      filter: url(#drawing-filter) url(#blur-filter-2);
+    }
+  } */
 
   :deep(.message-backdrop) {
     background-color: rgb(0 0 0 / 0.33);
@@ -823,16 +846,37 @@ main {
     grid-area: word;
     padding: 0.5rem;
 
+    &:not([data-word-hint]) {
+      .top {
+        translate: 0 60%;
+      }
+
+      .bottom {
+        opacity: 0;
+        user-select: none;
+      }
+    }
+
     .top {
       font-size: 1rem;
       font-weight: bold;
+      transition: translate 0.25s ease;
     }
 
     .bottom {
+      display: flex;
+      justify-content: center;
       font-family: 'JetBrains Mono', monospace;
-      letter-spacing: 0.4ch;
+      transition: opacity 0.25s ease;
       font-size: 1.2rem;
       font-variant-ligatures: none;
+
+      > .char {
+        --padding-inline: 0.2ch;
+        transform-origin: 50% 75%;
+        padding-inline: 0.2ch;
+        white-space: pre;
+      }
     }
   }
 
@@ -860,9 +904,16 @@ main {
 .chat-area {
   z-index: 10;
   grid-area: chat;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  gap: 0.5rem;
+  position: relative;
+
+  .chat-wrapper {
+    /* Prevent chat from expanding beyond the size of its parent. */
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 0.5rem;
+  }
 
   .chat-content {
     overflow-x: hidden;
@@ -902,6 +953,20 @@ main {
   inset: 0;
   border-radius: 0.5rem;
   overflow: hidden;
+}
+
+.char-enter-active {
+  transition: scale 0.5s cubic-bezier(.5, 2, .5, 1);
+}
+
+.char-leave-active {
+  display: none;
+}
+
+.char-leave-to,
+.char-enter-from {
+  scale: 0;
+  opacity: 0;
 }
 
 .list-move,

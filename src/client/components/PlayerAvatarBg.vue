@@ -53,6 +53,7 @@ svg {
   display: block;
   height: 100%;
   width: 100%;
+  filter: url(#drawing-filter);
 }
 
 .fill {

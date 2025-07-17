@@ -4,6 +4,14 @@ import { RouterLink, RouterView } from 'vue-router'
 import Button from 'primevue/button';
 
 const blurStrength = ref(150);
+const drawingFilterChannels = ref(['R', 'G', 'B', 'A']);
+
+setInterval(() => {
+  requestAnimationFrame(() => {
+    drawingFilterChannels.value = drawingFilterChannels.value
+      .map((v, i, a) => a[(i + 1) % a.length]);
+  });
+}, 250);
 
 function beforePageEnter(el: Element) {
   if (el instanceof HTMLElement) {
@@ -71,9 +79,14 @@ function beforePageLeave(el: Element) {
         <feBlend in="feDiffuseLighting-0924e9c2" in2="SourceGraphic" mode="multiply"></feBlend>
         <feComposite in="feBlend-59ffcabd" in2="SourceAlpha" operator="in"></feComposite>
       </filter>
+
+      <filter id="drawing-filter">
+        <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="1" />
+        <feDisplacementMap in="SourceGraphic" scale="5" :xChannelSelector="drawingFilterChannels[0]"
+          :yChannelSelector="drawingFilterChannels[1]" />
+      </filter>
     </defs>
   </svg>
-
 </template>
 
 <style scoped>
@@ -111,8 +124,11 @@ header {
   margin-inline: auto;
   max-width: var(--app-max-width);
   position: relative;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr);
+  display: flex;
+
+  > * {
+    flex: 1;
+  }
 }
 
 .page-forward-leave-active,

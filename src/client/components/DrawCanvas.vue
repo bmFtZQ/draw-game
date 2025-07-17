@@ -195,6 +195,7 @@ const cursorUrl = computed(() =>
   .click-catcher[data-can-draw] {
     /* Use the dynamically generated svg */
     cursor: v-bind(cursorUrl) v-bind(cursorHotspot) v-bind(cursorHotspot), default;
+    touch-action: none;
   }
 
   &:not(.transparent) :deep(canvas) {

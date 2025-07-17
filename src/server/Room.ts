@@ -87,7 +87,7 @@ export class Room extends EventEmitter {
     }
 
     this.messageAllPlayers({ type: MessageType.PLAYER_LEAVE, reason, id: player.id });
-    this.emit('player-left', player, true);
+    this.emit('player-left', player);
 
     if (willHostChange) {
       this.#roomOwner = this.players[0]?.id ?? -1;
@@ -173,14 +173,16 @@ export class Room extends EventEmitter {
 
         const gameEndMsg: GameEndMessage = {
           type: MessageType.GAME_END,
-          scores: this.players.map(p => ({ player_id: p.id, points: p.score }))
+          scores: this.players.map(p => ({ id: p.id, points: p.score }))
         };
 
         this.messageAllPlayers(gameEndMsg);
         await delay(5000, this.#abortController.signal);
+        this.#gameState = 'none';
         resolve();
       }
       catch (e) {
+        this.#gameState = 'none';
         if (e === 'stop-game') return;
         throw e;
       }
@@ -221,11 +223,12 @@ export class Room extends EventEmitter {
 
         this.#wordHint = this.#currentWord;
         this.#gameState = 'end-turn';
-        scoreMsg.scores.forEach(s => {
-          const player = this.players.find(p => p.id === s.player_id)!;
-          player.score += s.points;
-          player.has_guessed = false;
-        });
+
+        this.players.forEach(p => {
+          p.has_guessed = false;
+          const score = scoreMsg.scores?.find(s => s.id === p.id);
+          if (score) p.score += score.points;
+        })
 
         const time = 5000;
         this.#timerStart = Date.now();
@@ -259,16 +262,19 @@ export class Room extends EventEmitter {
 
   private async runTurn(word: string, signal: AbortSignal): Promise<TurnEndMessage> {
 
-    this.players.forEach(p => p.has_guessed = false);
     const scores = new Map<Player, number>();
-    this.players.forEach(p => scores.set(p, 0));
-    const getScores = (): { player_id: number, points: number }[] => {
-      return [...scores.entries()]
-        .map(([p, s]) => ({ player_id: p.id, points: s }));
-    };
+
+    const getScores = () => [
+      ...mapIter(scores.entries(), ([p, s]) => ({ id: p.id, points: s }))
+    ];
 
     const maxHints = Math.min(this.settings.max_hints, Math.round(word.length / 2));
     const hintRate = Math.max(this.settings.timer / maxHints, 10);
+
+    // Determines if any player has guessed yet.
+    let playerGuessed = false;
+    let scoringTime = this.settings.timer - Math.max(this.settings.timer / 2, 30);
+    let jumpTime = round(this.settings.timer * 0.4, 15);
 
     return await new Promise((resolve, reject) => {
       const removeListeners = () => {
@@ -283,10 +289,23 @@ export class Room extends EventEmitter {
       signal.addEventListener('abort', () => {
         removeListeners();
         reject(signal.reason);
-      })
+      });
 
-      const roundEndTimeout = setTimeout(() => {
+      const calculateCurrentPlayerScore = () => {
+        const now = Date.now();
+        const playersGuessed = arrayCount(this.players, p => p.has_guessed);
+        const timeLeft = (this.#timerExpires - now) / 1000;
+        const timeBonus = Math.min(timeLeft / scoringTime, 1);
+
+        const score = round(60 * playersGuessed + timeBonus * 50, 5);
+
+        const player = this.players.find(p => p.id === this.#currentPlayer)!;
+        scores.set(player, score);
+      };
+
+      const roundEndHandler = () => {
         clearInterval(hintInterval);
+        calculateCurrentPlayerScore();
         resolve({
           type: MessageType.TURN_END,
           reason: 'time-out',
@@ -296,8 +315,10 @@ export class Room extends EventEmitter {
             start: -1,
             expires: -1
           }
-        })
-      }, this.settings.timer * 1000);
+        });
+      };
+
+      let roundEndTimeout = setTimeout(roundEndHandler, this.settings.timer * 1000);
 
       let hints = -1;
       const hintInterval = setInterval(() => {
@@ -326,12 +347,11 @@ export class Room extends EventEmitter {
       }, hintRate * 1000);
 
       const currentPlayerLeftHandler = (player: Player) => {
-        scores.delete(player);
         removeListeners();
+        // Return without awarding points.
         resolve({
           type: MessageType.TURN_END,
           reason: 'left',
-          scores: getScores(),
           word,
           timer: {
             start: -1,
@@ -339,19 +359,13 @@ export class Room extends EventEmitter {
           }
         });
       };
-
       this.on('current-player-left', currentPlayerLeftHandler);
 
-      const checkIfAnyLeft = (player: Player, last?: boolean) => {
-
+      const checkIfAnyLeft = (player: Player) => {
         const left = arrayCount(this.players, p => !p.has_guessed && p.id !== this.#currentPlayer);
 
-        if (left <= this.players.length * 2 / 3) {
-          const currentPlayer = this.players.find(p => p.id === this.#currentPlayer)!;
-          scores.set(currentPlayer, this.calculateScore(true));
-        }
-
-        if (!last && !left) {
+        if (!left) {
+          calculateCurrentPlayerScore();
           removeListeners();
           resolve({
             type: MessageType.TURN_END,
@@ -367,42 +381,48 @@ export class Room extends EventEmitter {
       };
 
       const playerGuessedHandler = (player: Player) => {
-        scores.set(player, this.calculateScore());
+
+        const now = Date.now();
+        const playersLeft = arrayCount(this.players, p => !p.has_guessed && p.id !== this.#currentPlayer);
+        const timeLeft = (this.#timerExpires - now) / 1000;
+        const timeBonus = Math.min(timeLeft / scoringTime, 1);
+
+        const score = round(300 * timeBonus + playersLeft * 25, 5);
+        scores.set(player, score);
+
+        if (!playerGuessed) {
+          playerGuessed = true;
+
+          const newTime = now + jumpTime * 1000;
+          if (newTime < this.#timerExpires) {
+            this.#timerExpires = newTime;
+            // The timer will jump to the calculated time once the first player guesses.
+            clearTimeout(roundEndTimeout);
+            roundEndTimeout = setTimeout(roundEndHandler, jumpTime * 1000);
+            this.messageAllPlayers({
+              type: MessageType.TIMER,
+              timer: {
+                start: this.#timerStart,
+                expires: this.#timerExpires
+              }
+            });
+          }
+        }
         checkIfAnyLeft(player);
       };
-
       this.on('player-guessed', playerGuessedHandler);
 
       const playerJoinHandler = (player: Player) => {
-        scores.set(player, 0);
         checkIfAnyLeft(player);
       };
-
       this.on('player-join', playerJoinHandler);
 
-      const playerLeftHandler = (player: Player, last: boolean) => {
+      const playerLeftHandler = (player: Player) => {
         scores.delete(player);
-        checkIfAnyLeft(player, last);
+        checkIfAnyLeft(player);
       };
-
       this.on('player-left', playerLeftHandler);
     });
-  }
-
-  /**
-   * Calculate score based on the current timer value.
-   */
-  private calculateScore(isCurrent: boolean = false): number {
-    const now = new Date();
-    const diff = (this.#timerExpires.valueOf() - now.valueOf()) / 1000;
-    const progress = diff / this.settings.timer;
-
-    const currentOffset = (isCurrent ? 1 : 0);
-    const left = arrayCount(this.players, p => !p.has_guessed) - currentOffset;
-    const proportion = left / this.players.length;
-
-    console.log(progress, left, proportion);
-    return 100 + round(progress * 400 * proportion + 100 * currentOffset, 50);
   }
 
   private promptChoseWord(words: string[], signal: AbortSignal): Promise<string> {
@@ -465,7 +485,7 @@ export class Room extends EventEmitter {
     });
   }
 
-  public handleMessage(ws: WebSocket, msg: ClientMessage) {
+  public async handleMessage(ws: WebSocket, msg: ClientMessage) {
 
     switch (msg.type) {
       case MessageType.WORD_CHOSEN:
@@ -479,10 +499,14 @@ export class Room extends EventEmitter {
       case MessageType.START_GAME:
         if (ws === this.getClient(this.#roomOwner)) {
           if (this.#gameState === 'none') {
-            this.startGame()
-              .catch(e => e !== 'stop-game'
-                ? Promise.reject(e)
-                : Promise.resolve());
+            try {
+              while (true) {
+                await this.startGame();
+              }
+            } catch (e) {
+              if (e === 'stop-game') return;
+              console.error('An error occurred:', e);
+            }
           }
         } else {
           this.messagePlayer(ws, {
