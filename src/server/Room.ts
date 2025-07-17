@@ -108,14 +108,6 @@ export class Room extends EventEmitter {
     }
   }
 
-  private chooseNextPlayer() {
-    if (this.#currentPlayer === -1) {
-      this.#currentPlayer = this.players.at(-1)!.id;
-    } else {
-      this.#currentPlayer = this.players.find(p => p.id < this.#currentPlayer)?.id ?? this.players.at(-1)!.id;
-    }
-  }
-
   public stopGame() {
     this.#gameState = 'none';
     this.#abortController?.abort('stop-game');
@@ -163,8 +155,12 @@ export class Room extends EventEmitter {
 
           await delay(time, this.#abortController.signal);
 
-          for (let i = this.players.length - 1; i >= 0; i--) {
-            this.chooseNextPlayer();
+          const lastPlayer = this.players.at(-1)!.id;
+          for (let i = lastPlayer; i >= (this.players[0]?.id ?? 0); i--) {
+            // Verify player is in-game before starting turn.
+            const id = this.players.find(p => p.id === i)?.id;
+            if (id === undefined) continue;
+            this.#currentPlayer = id;
             await this.singleTurn(this.#abortController.signal);
           }
         }
@@ -177,7 +173,7 @@ export class Room extends EventEmitter {
         };
 
         this.messageAllPlayers(gameEndMsg);
-        await delay(5000, this.#abortController.signal);
+        await delay(10000, this.#abortController.signal);
         this.#gameState = 'none';
         resolve();
       }
@@ -501,7 +497,7 @@ export class Room extends EventEmitter {
           if (this.#gameState === 'none') {
             try {
               while (true) {
-                await this.startGame();
+              await this.startGame();
               }
             } catch (e) {
               if (e === 'stop-game') return;

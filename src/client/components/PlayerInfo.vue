@@ -39,7 +39,7 @@ defineProps<{
 }
 
 [data-me="true"] {
-  --_text-color: var(--player-me-text-color);
+  --_text-color: var(--player-me-text-color) !important;
   --_gradient-color: var(--player-me-background-tint);
 }
 

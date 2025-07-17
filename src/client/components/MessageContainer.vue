@@ -52,8 +52,9 @@ const props = defineProps<{
 }
 
 .message-content {
-  font-size: 1.5rem;
   color: rgb(255 255 255);
+  text-shadow: 0 1px 4px rgb(0 0 0 / 0.5);
+  font-size: clamp(1rem, 2vw, 2rem);
 }
 
 .fade-enter-active,

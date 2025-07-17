@@ -16,7 +16,10 @@
     hsl(40 75% 50% / 0.35)
   );
 
-  --player-me-text-color: currentColor;
+  --player-me-text-color: light-dark(
+    hsl(220 100% 60%),
+    hsl(220 100% 75%)
+  );
   --player-me-background-tint: light-dark(
     rgb(0 0 0 / 0.15),
     rgb(255 255 255 / 0.25)
@@ -55,6 +58,9 @@
   --chat-game-end: var(--chat-almost);
   --chat-kick: var(--chat-almost);
   --chat-host-change: var(--chat-almost);
+
+  --leaderboard-no-points: hsl(5 85% 65%);
+  --leaderboard-gained-points: hsl(130 65% 60%);
 
   --backdrop-blur: blur(20px);
 

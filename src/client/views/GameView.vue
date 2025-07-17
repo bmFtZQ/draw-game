@@ -69,13 +69,18 @@ const wordHintHeader = ref('');
 const endReason = ref('');
 const state = ref<GameState>();
 
+const turnEndLeaderboard = computed(() =>
+  [...players.value]
+    .sort((a, b) => (b.newScore ?? 0) - (a.newScore ?? 0) || (a.id - b.id))
+);
+
 const leaderboard = computed<[number, Player][]>(() => {
-  let prevScore = -1;
+  let prevScore = Infinity;
   let position = 0;
   return [...players.value]
-    .sort((a, b) => (a.score - b.score) || (a.id - b.id))
+    .sort((a, b) => (b.score - a.score) || (a.id - b.id))
     .map(p => [
-      p.score > prevScore
+      p.score < prevScore
         ? (prevScore = p.score, ++position)
         : position,
       p
@@ -369,6 +374,7 @@ function addChatMessage(msg: ChatItem) {
 
 const chatInput = ref('');
 function sendChat() {
+  if (!chatInput.value) return;
   chatScrolledToBottom.value = true;
   sendMessage({
     type: MessageType.SEND_CHAT,
@@ -571,12 +577,14 @@ function onSaveSettingsClick() {
                     <span v-if="endReason === 'kick'">The player was kicked!</span>
                     <span v-if="endReason === 'left'">The player left!</span>
                   </div>
-                  <ol>
-                    <li v-for="player in players" :key="player.id" :class="{ guessed: player.has_guessed }">
-                      {{ player.name }}: {{ player.score }} pts.
-                      <span v-if="player.newScore">(+{{ player.newScore }})</span>
+                  <ul class="players">
+                    <li v-for="player in turnEndLeaderboard" :key="player.id" class="player">
+                      <div class="player-name">{{ player.name }}</div>
+                      <div class="player-score" :data-gained="player.newScore || undefined">
+                        <span v-if="player.newScore">+</span>{{ player.newScore ?? 0 }}
+                      </div>
                     </li>
-                  </ol>
+                  </ul>
                 </div>
               </template>
               <template #choose-word>
@@ -787,11 +795,28 @@ main {
 
     .reason {
       color: rgb(255 255 255 / 0.75);
-      font-size: 1.25rem;
+      font-size: 0.75em;
     }
 
-    .guessed {
-      color: green;
+    .players {
+      justify-self: stretch;
+      padding: 0;
+      margin: 0;
+
+      .player {
+        list-style: none;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 1rem;
+
+        .player-score {
+          color: var(--leaderboard-no-points);
+
+          &[data-gained] {
+            color: var(--leaderboard-gained-points);
+          }
+        }
+      }
     }
   }
 
@@ -811,6 +836,10 @@ main {
       display: flex;
       flex-wrap: wrap;
       gap: 0.5rem;
+
+      .p-button {
+        font-size: 0.75em;
+      }
     }
   }
 }
