@@ -194,7 +194,22 @@ export class Room extends EventEmitter {
 
         const words = this.generateWords(this.settings.word_choices);
         this.#gameState = 'choosing-word';
-        this.#currentWord = await this.promptChoseWord(words, signal);
+
+        const word = await this.promptChoseWord(words, signal);
+        if (!word) {
+          this.messageAllPlayers({
+            type: MessageType.TURN_END,
+            reason: 'left',
+            word: '',
+            timer: {
+              start: -1,
+              expires: -1
+            }
+          });
+          return resolve();
+        }
+        this.#currentWord = word;
+
         this.#timerStart = Date.now();
         this.#timerExpires = this.#timerStart + this.settings.timer * 1000;
         this.#wordHint = this.#currentWord.replace(/\w/g, '_');
@@ -421,7 +436,7 @@ export class Room extends EventEmitter {
     });
   }
 
-  private promptChoseWord(words: string[], signal: AbortSignal): Promise<string> {
+  private promptChoseWord(words: string[], signal: AbortSignal): Promise<string | undefined> {
 
     this.#timerStart = Date.now();
     this.#timerExpires = this.#timerStart + this.settings.choose_word_timer * 1000;
@@ -440,7 +455,7 @@ export class Room extends EventEmitter {
     delete msg.words;
     this.messageOtherPlayers(this.#currentPlayer, msg);
 
-    return new Promise<string>((resolve, reject) => {
+    return new Promise<string | undefined>((resolve, reject) => {
       try {
         const removeListeners = () => {
           clearTimeout(timeout);
@@ -469,7 +484,7 @@ export class Room extends EventEmitter {
 
         const currentPlayerLeftHandler = (player: Player) => {
           removeListeners();
-          resolve(words[Math.floor(Math.random() * words.length)]!);
+          resolve(undefined);
         };
 
         this.on('current-player-left', currentPlayerLeftHandler);
@@ -497,7 +512,7 @@ export class Room extends EventEmitter {
           if (this.#gameState === 'none') {
             try {
               while (true) {
-              await this.startGame();
+                await this.startGame();
               }
             } catch (e) {
               if (e === 'stop-game') return;

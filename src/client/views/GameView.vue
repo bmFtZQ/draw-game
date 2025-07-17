@@ -197,6 +197,7 @@ websocket.onmessage = e => {
         me: player.id === me.value
       });
       player.has_guessed = true;
+      if (msg.word) wordHint.value = msg.word;
       break;
     }
 
@@ -264,8 +265,8 @@ websocket.onmessage = e => {
       break;
 
     case MessageType.REVEAL_HINT:
-      wordHint.value = msg.word_hint;
-      break;
+      if (!findPlayer(me.value)?.has_guessed) wordHint.value = msg.word_hint;
+    break;
 
     case MessageType.STOP:
       state.value = 'none';
