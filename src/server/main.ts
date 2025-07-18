@@ -33,7 +33,7 @@ const { values: { print } } = parseArgs({
   }
 });
 
-ws.app.ws('/', (ws, req) => {
+ws.app.ws('/room', (ws, req) => {
 
   let room: Room | undefined;
   let roomsMap: Map<string, Room>;
@@ -62,6 +62,10 @@ ws.app.ws('/', (ws, req) => {
       printRooms();
     }
   })
+});
+
+app.get('/ping', (req, res) => {
+  res.status(204).send();
 });
 
 const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;

@@ -19,6 +19,7 @@ const props = defineProps<{
 
 const root = ref<HTMLElement>();
 
+
 onMounted(() => {
   const elm = document.querySelector('#app > .page-wrapper .game-area');
   if (elm) {
@@ -27,8 +28,12 @@ onMounted(() => {
   }
 });
 
-const websocket = new WebSocket(location.origin.replace('http', 'ws'), 'draw-v1');
-const canSendChat = ref(false);
+const pingSeconds = 60;
+let pingInterval = setInterval(() => fetch('/ping'), pingSeconds * 1000);
+const websocket = new WebSocket(
+  location.origin.replace(/^http/, 'ws') + '/room',
+  'draw-v1'
+);
 
 websocket.onopen = async (e) => {
   const name = localGet<string>('name', 'no name');
@@ -47,12 +52,16 @@ websocket.onopen = async (e) => {
 function reload() {
   location.reload();
 }
+
 const closeDialogVisible = ref(false);
 const websocketClosedReason = ref('');
+const websocketClosedCode = ref<number>();
 websocket.onclose = (e) => {
   closeDialogVisible.value = true;
   websocketClosedReason.value = e.reason;
   console.warn('WebSocket closed', e.reason);
+  websocketClosedCode.value = e.code;
+  clearInterval(pingInterval);
 };
 
 onUnmounted(() => {
@@ -380,13 +389,15 @@ const chatMessages = ref<ChatItem[]>([
   // { kind: 'kick', player: p, toKick: p, kicks: 2, required: 5 }
 ]);
 
+const canSendChat = ref(false);
+
 function addChatMessage(msg: ChatItem) {
   chatMessages.value.push(msg);
 }
 
 const chatInput = ref('');
 function sendChat() {
-  if (!chatInput.value) return;
+  if (!canSendChat.value) return;
   chatScrolledToBottom.value = true;
   sendMessage({
     type: MessageType.SEND_CHAT,
@@ -685,7 +696,8 @@ function onSaveSettingsClick() {
     <Dialog class="close-dialog" v-model:visible="closeDialogVisible" header="WebSocket connection closed" modal
       :closable="false">
       <p>The WebSocket connection was closed.</p>
-      <p>Reason: {{ websocketClosedReason }}</p>
+      <p v-if="websocketClosedReason">Reason: {{ websocketClosedReason }}</p>
+      <p v-if="websocketClosedCode !== undefined">Code: {{ websocketClosedCode }}</p>
       <template #footer>
         <Button label="Refresh page" @click="reload"></Button>
       </template>
