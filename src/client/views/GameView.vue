@@ -397,13 +397,14 @@ function addChatMessage(msg: ChatItem) {
 
 const chatInput = ref('');
 function sendChat() {
-  if (!canSendChat.value) return;
-  chatScrolledToBottom.value = true;
+  if (!chatInput.value || !canSendChat.value) return;
+
   sendMessage({
     type: MessageType.SEND_CHAT,
     content: chatInput.value
   });
   chatInput.value = '';
+  chatScrolledToBottom.value = true;
 }
 
 function startGame() {

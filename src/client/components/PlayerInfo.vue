@@ -19,7 +19,8 @@ defineProps<{
         <div class="avatar">
           <PlayerAvatar :fill="player.avatar_bg" :drawing="player.avatar" />
           <div class="badges">
-            <MaterialIcon :size="20" v-if="host" class="badge host" icon="settings" />
+            <MaterialIcon :size="20" v-if="host" class="badge host" icon="settings" alt="Room host" />
+            <img v-if="current" width="20" height="20" src="@/assets/pencil.svg" alt="Currently drawing" />
           </div>
         </div>
         <div class="player-name">
@@ -70,6 +71,8 @@ defineProps<{
 
 .badges {
   --_badge-size: 24px;
+  display: flex;
+  gap: 0.25rem;
   position: absolute;
   left: calc(var(--_badge-size) / -3);
   bottom: calc(var(--_badge-size) / -3);

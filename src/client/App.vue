@@ -28,7 +28,7 @@ function beforePageLeave(el: Element) {
 
 <template>
   <header>
-    <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="24" height="24" />
+    <img alt="Draw logo" class="logo" src="@/assets/pencil.svg" width="32" height="32" />
     <div class="title">Draw</div>
 
     <nav>
