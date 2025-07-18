@@ -28,7 +28,7 @@ onMounted(() => {
   }
 });
 
-const pingSeconds = 60;
+const pingSeconds = 60 * 5;
 let pingInterval = setInterval(() => fetch('/ping'), pingSeconds * 1000);
 const websocket = new WebSocket(
   location.origin.replace(/^http/, 'ws') + '/room',
