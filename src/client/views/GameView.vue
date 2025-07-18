@@ -44,6 +44,17 @@ websocket.onopen = async (e) => {
   websocket.send(JSON.stringify(msg));
 };
 
+function reload() {
+  location.reload();
+}
+const closeDialogVisible = ref(false);
+const websocketClosedReason = ref('');
+websocket.onclose = (e) => {
+  closeDialogVisible.value = true;
+  websocketClosedReason.value = e.reason;
+  console.warn('WebSocket closed', e.reason);
+};
+
 onUnmounted(() => {
   websocket.close();
 });
@@ -266,7 +277,7 @@ websocket.onmessage = e => {
 
     case MessageType.REVEAL_HINT:
       if (!findPlayer(me.value)?.has_guessed) wordHint.value = msg.word_hint;
-    break;
+      break;
 
     case MessageType.STOP:
       state.value = 'none';
@@ -670,6 +681,15 @@ function onSaveSettingsClick() {
         </Button>
       </Grid>
     </Dialog>
+
+    <Dialog class="close-dialog" v-model:visible="closeDialogVisible" header="WebSocket connection closed" modal
+      :closable="false">
+      <p>The WebSocket connection was closed.</p>
+      <p>Reason: {{ websocketClosedReason }}</p>
+      <template #footer>
+        <Button label="Refresh page" @click="reload"></Button>
+      </template>
+    </Dialog>
   </main>
 </template>
 
@@ -1027,5 +1047,13 @@ main {
 .shrink-enter-from,
 .shrink-leave-to {
   scale: 0;
+}
+
+p:first-child {
+  margin-block-start: 0;
+}
+
+p:last-child {
+  margin-block-start: 0;
 }
 </style>
